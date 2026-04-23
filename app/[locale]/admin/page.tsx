@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { signInWithGoogle, logOut, isAdmin as checkAdmin, onAuth } from '@/lib/firebase/auth'
-import { getAllOffersAdmin, updateOffer, deleteOffer, getStations, createStation, Offer, Station, OfferStatus } from '@/lib/firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { functions } from '@/lib/firebase/config'
+import { getAllOffersAdmin, updateOffer, deleteOffer, ownerAcceptOffer, getStations, createStation, Offer, Station, OfferStatus } from '@/lib/firebase/firestore'
 import { exportOffersToExcel } from '@/lib/utils/exportExcel'
 import { statusColor, statusLabel } from '@/lib/utils/validation'
-import { ShieldCheck, LogIn, LogOut, Download, Trash2, CheckCircle, Loader2, Plus } from 'lucide-react'
+import { ShieldCheck, LogOut, Download, Trash2, CheckCircle, Loader2, Plus } from 'lucide-react'
 import { User } from 'firebase/auth'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -20,8 +18,8 @@ export default function AdminPage() {
   const [stations, setStations] = useState<Station[]>([])
   const [newStation, setNewStation] = useState('')
 
-  // Filters
-  const [filterStatus,  setFilterStatus]  = useState('')
+  // Filters — default to showing only 'selected' offers
+  const [filterStatus,  setFilterStatus]  = useState<OfferStatus | ''>('selected')
   const [filterStation, setFilterStation] = useState('')
   const [filterMonth,   setFilterMonth]   = useState('')
 
@@ -68,19 +66,16 @@ export default function AdminPage() {
   }
 
   async function handleStatusChange(offerId: string, newStatus: OfferStatus) {
-    if (newStatus === 'confirmed') {
-      const fn = httpsCallable(functions, 'adminConfirmOffer')
-      try {
-        await fn({ offerId })
-        toast.success('تم تأكيد العرض')
-        loadOffers()
-      } catch (err: any) {
-        toast.error(err.message || 'حدث خطأ')
+    try {
+      if (newStatus === 'confirmed') {
+        await ownerAcceptOffer(offerId)
+      } else {
+        await updateOffer(offerId, { status: newStatus })
       }
-    } else {
-      await updateOffer(offerId, { status: newStatus })
       toast.success('تم تحديث الحالة')
       loadOffers()
+    } catch (err: any) {
+      toast.error(err.message || 'حدث خطأ')
     }
   }
 
@@ -165,7 +160,7 @@ export default function AdminPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-wrap gap-3 items-end">
         <div>
           <label className="block text-xs text-gray-500 mb-1">الحالة</label>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as OfferStatus | '')}
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2E86AB]">
             <option value="">الكل</option>
             <option value="in_progress">متاح</option>
@@ -198,14 +193,14 @@ export default function AdminPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[#1B3A6B] text-white">
-                {['صاحب العرض','رقم الموظف','المحطة','أيام الطلب','البديل','المختار','رقمه','الحالة','إجراءات'].map(h => (
+                {['صاحب العرض','رقم الموظف','المحطة','أيام الطلب','البديل','المختار','رقمه','محطته','الحالة','إجراءات'].map(h => (
                   <th key={h} className="text-right px-4 py-3 font-medium whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {offers.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-10 text-gray-400">لا توجد عروض</td></tr>
+                <tr><td colSpan={10} className="text-center py-10 text-gray-400">لا توجد عروض</td></tr>
               ) : offers.map((offer, i) => (
                 <tr key={offer.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   <td className="px-4 py-3 font-medium text-[#1B3A6B]">{offer.ownerName}</td>
@@ -221,6 +216,7 @@ export default function AdminPage() {
                   <td className="px-4 py-3 text-xs text-gray-500">{offer.replacementDays.length} يوم</td>
                   <td className="px-4 py-3">{offer.selectorName || <span className="text-gray-300">—</span>}</td>
                   <td className="px-4 py-3 font-mono text-xs" dir="ltr">{offer.selectorCode || '—'}</td>
+                  <td className="px-4 py-3 text-xs">{offer.selectorStation || '—'}</td>
                   <td className="px-4 py-3">
                     <span className={clsx('text-xs font-medium px-2 py-1 rounded-full', statusColor(offer.status))}>
                       {statusLabel(offer.status)}
