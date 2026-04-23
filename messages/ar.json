@@ -1,0 +1,123 @@
+{
+  "nav": {
+    "allOffers":      "عروض الدوام",
+    "myOffers":       "عروضي",
+    "selectedOffers": "عروض اخترتها",
+    "admin":          "الإدارة"
+  },
+  "offers": {
+    "title":          "عروض تبادل الدوام",
+    "noOffers":       "لا توجد عروض متاحة حالياً",
+    "station":        "المحطة",
+    "daysOff":        "أيام الطلب",
+    "replacement":    "الأيام البديلة",
+    "status":         "الحالة",
+    "createdAt":      "تاريخ الإنشاء",
+    "selectOffer":    "اختيار العرض",
+    "viewDetails":    "تفاصيل",
+    "filterStation":  "تصفية حسب المحطة",
+    "filterShift":    "نوع الدوام",
+    "allStations":    "كل المحطات",
+    "allShifts":      "كل الدوامات"
+  },
+  "shifts": {
+    "day":     "صباحي",
+    "night":   "مسائي",
+    "overlap": "تداخل"
+  },
+  "status": {
+    "in_progress": "متاح",
+    "selected":    "تم الاختيار",
+    "confirmed":   "مؤكد"
+  },
+  "form": {
+    "createOffer":        "إنشاء عرض جديد",
+    "editOffer":          "تعديل العرض",
+    "name":               "الاسم",
+    "namePlaceholder":    "أدخل اسمك الكامل",
+    "employeeCode":       "رقم الموظف",
+    "codePlaceholder":    "6 أرقام",
+    "station":            "المحطة",
+    "selectStation":      "اختر المحطة",
+    "daysOff":            "أيام الطلب",
+    "addDay":             "إضافة يوم",
+    "replacement":        "الأيام البديلة",
+    "addReplacement":     "إضافة يوم بديل",
+    "submit":             "حفظ العرض",
+    "cancel":             "إلغاء",
+    "delete":             "حذف العرض",
+    "confirmDelete":      "هل أنت متأكد من حذف هذا العرض؟",
+    "maxReplacement":     "الحد الأقصى 16 يوم بديل"
+  },
+  "selection": {
+    "title":           "اختيار العرض",
+    "yourName":        "اسمك",
+    "yourCode":        "رقم موظفك",
+    "yourStation":     "محطتك",
+    "confirm":         "تأكيد الاختيار",
+    "cancel":          "إلغاء الاختيار",
+    "undoTitle":       "إلغاء الاختيار",
+    "undoConfirm":     "هل تريد إلغاء اختيارك لهذا العرض؟",
+    "limitReached":    "وصلت للحد الأقصى (20 عرض)"
+  },
+  "myOffers": {
+    "title":       "عروضي",
+    "noOffers":    "لم تنشئ أي عروض بعد",
+    "createNew":   "إنشاء عرض جديد",
+    "selectedBy":  "اختاره:",
+    "pending":     "في انتظار اختيار"
+  },
+  "selectedOffers": {
+    "title":    "العروض التي اخترتها",
+    "noOffers": "لم تختر أي عروض بعد",
+    "owner":    "صاحب العرض",
+    "undo":     "إلغاء الاختيار"
+  },
+  "admin": {
+    "title":        "لوحة الإدارة",
+    "login":        "تسجيل دخول الإدارة",
+    "email":        "البريد الإلكتروني",
+    "password":     "كلمة المرور",
+    "loginBtn":     "دخول",
+    "logout":       "خروج",
+    "export":       "تصدير Excel",
+    "filterMonth":  "الشهر",
+    "filterStatus": "الحالة",
+    "ownerName":    "اسم صاحب العرض",
+    "ownerCode":    "رقم الموظف",
+    "ownerStation": "المحطة",
+    "selectorName": "اسم المختار",
+    "actions":      "إجراءات",
+    "confirm":      "تأكيد",
+    "delete":       "حذف",
+    "changeStatus": "تغيير الحالة",
+    "stations":     "إدارة المحطات",
+    "addStation":   "إضافة محطة",
+    "stationName":  "اسم المحطة"
+  },
+  "errors": {
+    "required":       "هذا الحقل مطلوب",
+    "invalidCode":    "رقم الموظف يجب أن يكون 6 أرقام",
+    "dateInPast":     "التاريخ لا يمكن أن يكون في الماضي",
+    "dateTooFar":     "التاريخ يتجاوز الحد المسموح (شهرين)",
+    "monthMismatch":  "اليوم البديل خارج نطاق الشهر",
+    "monthLimit":     "يمكنك إنشاء عرض واحد فقط لكل شهر",
+    "selectionLimit": "وصلت للحد الأقصى من العروض المختارة (20)",
+    "ownOffer":       "لا يمكنك اختيار عرضك الخاص",
+    "generic":        "حدث خطأ، يرجى المحاولة مجدداً"
+  },
+  "common": {
+    "loading":  "جاري التحميل...",
+    "save":     "حفظ",
+    "cancel":   "إلغاء",
+    "delete":   "حذف",
+    "edit":     "تعديل",
+    "close":    "إغلاق",
+    "confirm":  "تأكيد",
+    "yes":      "نعم",
+    "no":       "لا",
+    "search":   "بحث",
+    "filter":   "تصفية",
+    "all":      "الكل"
+  }
+}

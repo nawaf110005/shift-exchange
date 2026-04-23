@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper functions ─────────────────────────────────────────
+    function isAuth() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isAuth() && request.auth.token.role == 'admin';
+    }
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+    function validCode(code) {
+      return code.matches('^[0-9]{6}$');
+    }
+    function validStatus(s) {
+      return s in ['in_progress', 'selected', 'confirmed'];
+    }
+
+    // ─── /offers ──────────────────────────────────────────────────
+    match /offers/{offerId} {
+      // READ: public in_progress offers, or owner/selector/admin
+      allow read: if isAuth() && (
+        resource.data.status == 'in_progress' ||
+        isOwner(resource.data.ownerUid) ||
+        isOwner(resource.data.selectorUid) ||
+        isAdmin()
+      );
+
+      // CREATE: authenticated user with valid data
+      allow create: if isAuth()
+        && validCode(request.resource.data.ownerCode)
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == 'in_progress'
+        && validStatus(request.resource.data.status)
+        && request.resource.data.daysOff.size() > 0
+        && request.resource.data.replacementDays.size() <= 16;
+
+      // UPDATE: owner can edit non-confirmed offers / admin can change anything
+      allow update: if (
+          isOwner(resource.data.ownerUid)
+          && resource.data.status != 'confirmed'
+          // Owner cannot change ownerUid
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          // Owner cannot manually change status
+          && request.resource.data.status == resource.data.status
+        )
+        || isAdmin();
+
+      // DELETE: owner (not confirmed) or admin
+      allow delete: if (
+          isOwner(resource.data.ownerUid)
+          && resource.data.status != 'confirmed'
+        )
+        || isAdmin();
+    }
+
+    // ─── /userProfiles ────────────────────────────────────────────
+    match /userProfiles/{uid} {
+      allow read, write: if isOwner(uid) || isAdmin();
+    }
+
+    // ─── /stations ───────────────────────────────────────────────
+    match /stations/{stationId} {
+      allow read: if isAuth();        // All authenticated users can read
+      allow write: if isAdmin();      // Only admin can manage
+    }
+
+    // ─── /adminLogs ──────────────────────────────────────────────
+    match /adminLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

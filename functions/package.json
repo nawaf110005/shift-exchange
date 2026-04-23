@@ -1,0 +1,23 @@
+{
+  "name": "shift-exchange-functions",
+  "scripts": {
+    "lint": "eslint --ext .js,.ts .",
+    "build": "tsc",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "engines": { "node": "20" },
+  "main": "lib/index.js",
+  "dependencies": {
+    "firebase-admin": "^12.1.0",
+    "firebase-functions": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.5",
+    "firebase-functions-test": "^3.1.0",
+    "eslint": "^8.15.0",
+    "typescript-eslint": "^7.0.2"
+  },
+  "private": true
+}
