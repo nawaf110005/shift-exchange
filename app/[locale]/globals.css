@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind utilities are loaded via CDN in layout.tsx — no build step needed */
 
 :root {
   --primary: #1B3A6B;

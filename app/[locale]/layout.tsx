@@ -31,6 +31,30 @@ export default async function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <head>
+        {/* Tailwind CSS — CDN version so styles work with no build-step dependency */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="https://cdn.tailwindcss.com" />
+        {/* Extend Tailwind with app colours and Arabic font */}
+        <script
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: `
+              tailwind.config = {
+                theme: {
+                  extend: {
+                    colors: {
+                      primary: { DEFAULT: '#1B3A6B', 50:'#E8EEF7', 100:'#C5D3E8', 500:'#2E86AB', 600:'#1B3A6B', 700:'#142D52' },
+                      accent: '#2E86AB',
+                    },
+                    fontFamily: {
+                      arabic: ['IBM Plex Sans Arabic','Noto Sans Arabic','Arial','sans-serif'],
+                    },
+                  },
+                },
+              }
+            `,
+          }}
+        />
         <link
           href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
