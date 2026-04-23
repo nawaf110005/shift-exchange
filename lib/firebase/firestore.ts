@@ -286,6 +286,25 @@ export function computeMatchScore(
   return Math.round((total / validMyDays.length) * 100)
 }
 
+// ─── UID Migration ───────────────────────────────────────────────────────────
+
+/**
+ * Migrate all offers owned by oldUid to newUid.
+ * Called after an anonymous user signs in with Google and the UID changes.
+ */
+export async function migrateOffersToNewUid(oldUid: string, newUid: string): Promise<void> {
+  const q = query(offersCol(), where('ownerUid', '==', oldUid))
+  const snap = await getDocs(q)
+  await Promise.all(
+    snap.docs.map(d =>
+      updateDoc(doc(db, 'offers', d.id), {
+        ownerUid:  newUid,
+        updatedAt: serverTimestamp(),
+      })
+    )
+  )
+}
+
 // ─── User Profiles ────────────────────────────────────────────────────────────
 
 export async function getUserProfile(uid: string) {
