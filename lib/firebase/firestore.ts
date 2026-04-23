@@ -115,8 +115,6 @@ export async function getMyOffers(uid: string): Promise<Offer[]> {
 
 /** Get offers selected by a specific user (Selected Offers page — includes confirmed) */
 export async function getSelectedOffers(uid: string): Promise<Offer[]> {
-  // Query by selectorUid only (no inequality filter) — avoids index/compat issues.
-  // Client page renders both 'selected' (can cancel) and 'confirmed' (final) correctly.
   const q = query(
     offersCol(),
     where('selectorUid', '==', uid),
@@ -171,25 +169,37 @@ export async function deleteOffer(id: string): Promise<void> {
 
 // ─── Admin Queries ────────────────────────────────────────────────────────────
 
-/** Admin: get all offers with optional filters */
+/** Admin: get all offers with optional filters.
+ *  Default (no status) returns 'selected' + 'confirmed'.
+ *  All queries sort client-side — no composite index required.
+ */
 export async function getAllOffersAdmin(filters: {
   status?: OfferStatus
   station?: string
   month?: string
 } = {}): Promise<Offer[]> {
-  let q: Query<DocumentData> = query(offersCol(), orderBy('createdAt', 'desc'))
+  const conditions: ReturnType<typeof where>[] = []
 
-  const conditions = []
-  if (filters.status)  conditions.push(where('status', '==', filters.status))
-  if (filters.station) conditions.push(where('ownerStation', '==', filters.station))
-  if (filters.month)   conditions.push(where('offerMonth', '==', filters.month))
-
-  if (conditions.length > 0) {
-    q = query(offersCol(), ...conditions, orderBy('createdAt', 'desc'))
+  if (filters.status) {
+    conditions.push(where('status', '==', filters.status))
+  } else {
+    // Default: show selected & confirmed (the ones that need admin attention)
+    conditions.push(where('status', 'in', ['selected', 'confirmed']))
   }
 
+  if (filters.station) conditions.push(where('ownerStation', '==', filters.station))
+  if (filters.month)   conditions.push(where('offerMonth',   '==', filters.month))
+
+  // No orderBy → no composite index needed; sort client-side instead
+  const q = query(offersCol(), ...conditions)
   const snap = await getDocs(q)
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Offer))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() } as Offer))
+    .sort((a, b) => {
+      const ta = (a.createdAt as any)?.toMillis?.() ?? 0
+      const tb = (b.createdAt as any)?.toMillis?.() ?? 0
+      return tb - ta
+    })
 }
 
 // ─── Stations ─────────────────────────────────────────────────────────────────
@@ -222,8 +232,7 @@ export async function toggleStation(id: string, active: boolean): Promise<void> 
 
 /** Fetch all in_progress offers for a given month (for match preview) */
 export async function getOffersForMonth(offerMonth: string): Promise<Offer[]> {
-  // No orderBy — avoids requiring a composite index on (status, offerMonth, createdAt).
-  // Sort client-side instead.
+  // No orderBy — avoids requiring a composite index; sort client-side instead
   const q = query(
     offersCol(),
     where('status', '==', 'in_progress'),
@@ -242,12 +251,16 @@ export async function getOffersForMonth(offerMonth: string): Promise<Offer[]> {
 /**
  * Compute match % between the user's draft offer and an existing offer.
  *
- * Logic:
- *  - myScore   : % of my daysOff covered by their replacementDays (compatible shift)
- *  - theirScore: % of their daysOff covered by my replacementDays (compatible shift)
- *  - final     : average of both, rounded to nearest integer
+ * A date match between my أيام الطلب (daysOff) and their الأيام البديلة (replacementDays)
+ * is the scoring gate. The percentage for each matched day is determined by shift compatibility:
  *
- * Shift compat: exact match = 1, overlap covers day/night = 0.75
+ *   - Same shift type              → 100%  (perfect)
+ *   - 'overlap' covers day/night   → 75%   (close)
+ *   - day/night covers 'overlap'   → 50%   (partial)
+ *   - Date match but incompatible  → 0%
+ *   - No date match                → 0%
+ *
+ * Overall score = average per-day score across all my requested days off.
  */
 export function computeMatchScore(
   myDaysOff: DayOff[],
@@ -261,29 +274,16 @@ export function computeMatchScore(
     return 0
   }
 
-  // How well do my daysOff fit into their replacementDays?
   const validMyDays = myDaysOff.filter(d => d.date)
-  let myScore = 0
-  if (validMyDays.length > 0) {
-    for (const myDay of validMyDays) {
-      const theirRep = other.replacementDays.find(r => r.date === myDay.date)
-      myScore += theirRep ? shiftScore(myDay.shift, theirRep.shifts) : 0
-    }
-    myScore = myScore / validMyDays.length
+  if (validMyDays.length === 0) return 0
+
+  let total = 0
+  for (const myDay of validMyDays) {
+    const theirRep = other.replacementDays.find(r => r.date === myDay.date)
+    total += theirRep ? shiftScore(myDay.shift, theirRep.shifts) : 0
   }
 
-  // How well do their daysOff fit into my replacementDays?
-  const validTheirDays = other.daysOff.filter(d => d.date)
-  let theirScore = 0
-  if (validTheirDays.length > 0) {
-    for (const theirDay of validTheirDays) {
-      const myRep = myReplacementDays.find(r => r.date === theirDay.date)
-      theirScore += myRep ? shiftScore(theirDay.shift, myRep.shifts) : 0
-    }
-    theirScore = theirScore / validTheirDays.length
-  }
-
-  return Math.round(((myScore + theirScore) / 2) * 100)
+  return Math.round((total / validMyDays.length) * 100)
 }
 
 // ─── User Profiles ────────────────────────────────────────────────────────────
