@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { subscribeToInProgressOffers, getStations, Offer, Station } from '@/lib/firebase/firestore'
-import { ensureAnonymousAuth } from '@/lib/firebase/auth'
+import { onAuth } from '@/lib/firebase/auth'
 import OfferCard from '@/components/offers/OfferCard'
 import SelectOfferModal from '@/components/offers/SelectOfferModal'
 import OfferFilters from '@/components/offers/OfferFilters'
@@ -12,19 +12,34 @@ import clsx from 'clsx'
 
 const OfferCalendar = dynamic(() => import('@/components/offers/OfferCalendar'), { ssr: false })
 
+/** Returns YYYY-MM for current month */
+function currentMonth() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** Arabic month name from YYYY-MM string */
+function monthLabel(ym: string) {
+  const [y, m] = ym.split('-')
+  const names = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
+                  'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
+  return `${names[parseInt(m) - 1]} ${y}`
+}
+
 export default function OffersPage() {
   const [offers,   setOffers]   = useState<Offer[]>([])
   const [stations, setStations] = useState<Station[]>([])
   const [loading,  setLoading]  = useState(true)
-  // Default to list on mobile (detected client-side)
   const [view,     setView]     = useState<'calendar' | 'list'>('list')
   const [station,  setStation]  = useState('')
+  const [month,    setMonth]    = useState(currentMonth)
   const [selected, setSelected] = useState<Offer | null>(null)
   const [myUid,    setMyUid]    = useState<string>('')
 
   useEffect(() => {
-    ensureAnonymousAuth().then(uid => setMyUid(uid))
+    const unsub = onAuth(u => setMyUid(u?.uid || ''))
     getStations().then(setStations)
+    return unsub
   }, [])
 
   useEffect(() => {
@@ -32,14 +47,21 @@ export default function OffersPage() {
     const unsub = subscribeToInProgressOffers((data) => {
       setOffers(data)
       setLoading(false)
-    }, station || undefined)
+    }, station || undefined, month)
     return unsub
-  }, [station])
+  }, [station, month])
+
+  /** Navigate month forward/back */
+  function shiftMonth(delta: number) {
+    const [y, m] = month.split('-').map(Number)
+    const d = new Date(y, m - 1 + delta, 1)
+    setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
 
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#1B3A6B]">عروض تبادل الدوام</h1>
           <p className="text-gray-500 text-sm mt-0.5">{offers.length} عرض متاح</p>
@@ -74,7 +96,26 @@ export default function OffersPage() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Month navigator */}
+      <div className="flex items-center justify-center gap-3 mb-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
+        <button
+          onClick={() => shiftMonth(-1)}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-[#1B3A6B] hover:bg-blue-100 transition-colors text-lg font-bold"
+        >
+          ›
+        </button>
+        <span className="text-sm font-semibold text-[#1B3A6B] min-w-[120px] text-center">
+          {monthLabel(month)}
+        </span>
+        <button
+          onClick={() => shiftMonth(1)}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-[#1B3A6B] hover:bg-blue-100 transition-colors text-lg font-bold"
+        >
+          ‹
+        </button>
+      </div>
+
+      {/* Station filters */}
       <OfferFilters
         stations={stations}
         selectedStation={station}
@@ -89,12 +130,11 @@ export default function OffersPage() {
       ) : offers.length === 0 ? (
         <div className="text-center py-24 text-gray-400">
           <CalendarDays className="w-14 h-14 mx-auto mb-4 opacity-30" />
-          <p className="text-base">لا توجد عروض متاحة حالياً</p>
+          <p className="text-base">لا توجد عروض لشهر {monthLabel(month)}</p>
         </div>
       ) : view === 'calendar' ? (
         <OfferCalendar offers={offers} onSelectOffer={setSelected} myUid={myUid} />
       ) : (
-        /* Mobile: 1 col, tablet: 2 col, desktop: 3 col */
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {offers.map(offer => (
             <OfferCard
