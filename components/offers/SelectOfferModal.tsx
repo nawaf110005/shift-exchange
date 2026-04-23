@@ -46,6 +46,8 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    // Guard: only registered (non-anonymous) users can select offers
+    if (!currentUser || currentUser.isAnonymous) return
     if (!validate()) return
     setLoading(true)
     try {
@@ -73,10 +75,12 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
     >
       <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl shadow-2xl max-h-[92vh] overflow-y-auto"
            style={{ paddingBottom: 'max(1.25rem, var(--safe-bottom))' }}>
+        {/* Drag handle (mobile) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
 
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <h2 className="text-lg font-bold text-[#1B3A6B]">اختيار العرض</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center">
@@ -84,6 +88,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
           </button>
         </div>
 
+        {/* Offer summary */}
         <div className="px-5 py-3 bg-blue-50 border-b">
           <p className="text-sm text-gray-600">
             عرض <span className="font-semibold text-[#1B3A6B]">{offer.ownerName}</span>
@@ -91,6 +96,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
           </p>
         </div>
 
+        {/* Not signed in at all */}
         {!currentUser && (
           <div className="px-5 py-6 flex flex-col items-center gap-3 text-center">
             <p className="text-sm text-gray-600">يجب تسجيل الدخول لاختيار العرض</p>
@@ -102,67 +108,83 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
           </div>
         )}
 
-        {currentUser && <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">اسمك</label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="الاسم الكامل"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2E86AB] focus:border-transparent"
-            />
-            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">رقم موظفك</label>
-            <input
-              type="tel"
-              inputMode="numeric"
-              value={code}
-              onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="6 أرقام"
-              maxLength={6}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2E86AB] focus:border-transparent"
-              dir="ltr"
-            />
-            {errors.code && <p className="text-red-500 text-xs mt-1">{errors.code}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">محطتك</label>
-            <select
-              value={station}
-              onChange={e => setStation(e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2E86AB] bg-white"
-            >
-              <option value="">اختر المحطة</option>
-              {stations.map(s => (
-                <option key={s.id} value={s.name}>{s.name}</option>
-              ))}
-            </select>
-            {errors.station && <p className="text-red-500 text-xs mt-1">{errors.station}</p>}
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 border border-gray-300 text-gray-700 py-3.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors min-h-[52px]"
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-[#1B3A6B] text-white py-3.5 rounded-xl text-sm font-semibold active:bg-[#142D52] disabled:opacity-50 transition-colors flex items-center justify-center gap-2 min-h-[52px]"
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              تأكيد الاختيار
+        {/* Anonymous user — must register first */}
+        {currentUser?.isAnonymous && (
+          <div className="px-5 py-6 flex flex-col items-center gap-3 text-center">
+            <p className="text-sm text-gray-700 font-semibold">سجّل بـ Google أولاً لاختيار عرض</p>
+            <p className="text-xs text-gray-500">التسجيل يحفظ عروضك وتحديداتك بشكل دائم</p>
+            <button onClick={handleSignIn} disabled={signingIn}
+              className="flex items-center gap-2 bg-[#1B3A6B] text-white px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60 min-h-[44px]">
+              <LogIn className="w-4 h-4" />
+              {signingIn ? 'جارٍ التسجيل…' : 'تسجيل الدخول بـ Google'}
             </button>
           </div>
-        </form>}
+        )}
+
+        {/* Form — registered users only */}
+        {currentUser && !currentUser.isAnonymous && (
+          <form onSubmit={handleSubmit} className="p-5 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">اسمك</label>
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="الاسم الكامل"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2E86AB] focus:border-transparent"
+              />
+              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">رقم موظفك</label>
+              <input
+                type="tel"
+                inputMode="numeric"
+                value={code}
+                onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="6 أرقام"
+                maxLength={6}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2E86AB] focus:border-transparent"
+                dir="ltr"
+              />
+              {errors.code && <p className="text-red-500 text-xs mt-1">{errors.code}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">محطتك</label>
+              <select
+                value={station}
+                onChange={e => setStation(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2E86AB] bg-white"
+              >
+                <option value="">اختر المحطة</option>
+                {stations.map(s => (
+                  <option key={s.id} value={s.name}>{s.name}</option>
+                ))}
+              </select>
+              {errors.station && <p className="text-red-500 text-xs mt-1">{errors.station}</p>}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 border border-gray-300 text-gray-700 py-3.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors min-h-[52px]"
+              >
+                إلغاء
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-[#1B3A6B] text-white py-3.5 rounded-xl text-sm font-semibold active:bg-[#142D52] disabled:opacity-50 transition-colors flex items-center justify-center gap-2 min-h-[52px]"
+              >
+                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                تأكيد الاختيار
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   )
