@@ -5,7 +5,7 @@ import { getMyOffers, deleteOffer, Offer } from '@/lib/firebase/firestore'
 import { ensureAnonymousAuth } from '@/lib/firebase/auth'
 import { statusColor, statusLabel } from '@/lib/utils/validation'
 import OfferForm from '@/components/offers/OfferForm'
-import { Plus, Pencil, Trash2, ListCheck, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, ListChecks, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { format } from 'date-fns'
@@ -74,7 +74,7 @@ export default function MyOffersPage() {
         </div>
       ) : offers.length === 0 ? (
         <div className="text-center py-24 text-gray-400">
-          <ListCheck className="w-14 h-14 mx-auto mb-4 opacity-30" />
+          <ListChecks className="w-14 h-14 mx-auto mb-4 opacity-30" />
           <p className="text-base mb-4">لم تنشئ أي عروض بعد</p>
           <button
             onClick={() => setShowForm(true)}
