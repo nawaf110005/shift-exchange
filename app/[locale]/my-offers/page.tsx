@@ -8,8 +8,6 @@ import OfferForm from '@/components/offers/OfferForm'
 import { Plus, Pencil, Trash2, ListChecks, Loader2, LogIn, CheckCircle, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
-
-
 import { User } from 'firebase/auth'
 
 export default function MyOffersPage() {
@@ -34,7 +32,7 @@ export default function MyOffersPage() {
     return onAuth((u) => {
       setUser(u)
       if (u) load(u.uid)
-      else   setLoading(false)
+      else setLoading(false)
     })
   }, [])
 
@@ -88,6 +86,7 @@ export default function MyOffersPage() {
     if (user) load(user.uid)
   }
 
+  // Still determining auth state
   if (user === undefined) {
     return (
       <div className="flex justify-center py-24">
@@ -96,25 +95,23 @@ export default function MyOffersPage() {
     )
   }
 
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-5">
-        <ListChecks className="w-16 h-16 text-gray-300" />
-        <div className="text-center">
-          <p className="text-lg font-semibold text-gray-700 mb-1">تسجيل الدخول مطلوب</p>
-          <p className="text-sm text-gray-400">سجّل دخولك بـ Google لإدارة عروضك</p>
-        </div>
-        <button onClick={handleSignIn} disabled={signingIn}
-          className="flex items-center gap-2 bg-[#1B3A6B] text-white px-6 py-3 rounded-xl text-sm font-semibold disabled:opacity-60 min-h-[48px]">
-          <LogIn className="w-4 h-4" />
-          {signingIn ? 'جارٍ تسجيل الدخول…' : 'دخول بـ Google'}
-        </button>
-      </div>
-    )
-  }
-
   return (
     <div>
+      {/* Guest banner for anonymous users */}
+      {user?.isAnonymous && (
+        <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-sm text-amber-800">
+            🔔 أنت تتصفح كضيف — سجّل دخولك بـ Google للاحتفاظ بعروضك بشكل دائم
+          </p>
+          <button onClick={handleSignIn} disabled={signingIn}
+            className="flex items-center gap-2 bg-[#1B3A6B] text-white px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-60 whitespace-nowrap min-h-[36px]">
+            <LogIn className="w-3.5 h-3.5" />
+            {signingIn ? 'جارٍ التسجيل…' : 'دخول بـ Google'}
+          </button>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#1B3A6B]">عروضي</h1>
@@ -157,7 +154,6 @@ export default function MyOffersPage() {
                   <span className="text-sm text-gray-500 truncate">{offer.ownerStation}</span>
                   <span className="text-xs text-gray-400">{offer.offerMonth}</span>
                 </div>
-
                 {offer.status === 'in_progress' && (
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
@@ -230,8 +226,8 @@ export default function MyOffersPage() {
         </div>
       )}
 
-      {showForm && (
-        <OfferForm uid={user.uid} displayName={user.displayName} offer={editing} onClose={handleFormClose} />
+      {showForm && user && (
+        <OfferForm uid={user.uid} displayName={user.displayName ?? ''} offer={editing} onClose={handleFormClose} />
       )}
     </div>
   )
