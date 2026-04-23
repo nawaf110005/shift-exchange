@@ -198,6 +198,67 @@ export async function toggleStation(id: string, active: boolean): Promise<void> 
   await updateDoc(doc(db, 'stations', id), { active })
 }
 
+// ─── Matching ─────────────────────────────────────────────────────────────────
+
+/** Fetch all in_progress offers for a given month (for match preview) */
+export async function getOffersForMonth(offerMonth: string): Promise<Offer[]> {
+  const q = query(
+    offersCol(),
+    where('status', '==', 'in_progress'),
+    where('offerMonth', '==', offerMonth),
+    orderBy('createdAt', 'desc')
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Offer))
+}
+
+/**
+ * Compute match % between the user's draft offer and an existing offer.
+ *
+ * Logic:
+ *  - myScore   : % of my daysOff covered by their replacementDays (compatible shift)
+ *  - theirScore: % of their daysOff covered by my replacementDays (compatible shift)
+ *  - final     : average of both, rounded to nearest integer
+ *
+ * Shift compat: exact match = 1, overlap covers day/night = 0.75
+ */
+export function computeMatchScore(
+  myDaysOff: DayOff[],
+  myReplacementDays: ReplacementDay[],
+  other: Offer
+): number {
+  function shiftScore(wanted: ShiftType, available: ShiftType[]): number {
+    if (available.includes(wanted)) return 1
+    if (available.includes('overlap') && (wanted === 'day' || wanted === 'night')) return 0.75
+    if (wanted === 'overlap' && (available.includes('day') || available.includes('night'))) return 0.5
+    return 0
+  }
+
+  // How well do my daysOff fit into their replacementDays?
+  const validMyDays = myDaysOff.filter(d => d.date)
+  let myScore = 0
+  if (validMyDays.length > 0) {
+    for (const myDay of validMyDays) {
+      const theirRep = other.replacementDays.find(r => r.date === myDay.date)
+      myScore += theirRep ? shiftScore(myDay.shift, theirRep.shifts) : 0
+    }
+    myScore = myScore / validMyDays.length
+  }
+
+  // How well do their daysOff fit into my replacementDays?
+  const validTheirDays = other.daysOff.filter(d => d.date)
+  let theirScore = 0
+  if (validTheirDays.length > 0) {
+    for (const theirDay of validTheirDays) {
+      const myRep = myReplacementDays.find(r => r.date === theirDay.date)
+      theirScore += myRep ? shiftScore(theirDay.shift, myRep.shifts) : 0
+    }
+    theirScore = theirScore / validTheirDays.length
+  }
+
+  return Math.round(((myScore + theirScore) / 2) * 100)
+}
+
 // ─── User Profiles ────────────────────────────────────────────────────────────
 
 export async function getUserProfile(uid: string) {
