@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { onAuth, isAdmin as checkAdmin, signInWithGoogle, logOut } from '@/lib/firebase/auth'
+import { onAuth, isAdmin as checkAdmin, signInWithGoogle, logOut, ensureAnonymousAuth } from '@/lib/firebase/auth'
 import { User } from 'firebase/auth'
 import { CalendarDays, ListChecks, Bookmark, ShieldCheck, LogIn, LogOut } from 'lucide-react'
 import clsx from 'clsx'
@@ -22,11 +22,15 @@ export default function Navbar() {
   const [authReady,    setAuthReady]    = useState(false)
 
   useEffect(() => {
+    // Ensure there is always at least an anonymous session on app load
+    ensureAnonymousAuth()
+
     return onAuth(async (u) => {
       setUser(u)
       setAuthReady(true)
-      if (u) setAdmin(await checkAdmin())
-      else   setAdmin(false)
+      // Anonymous users are never admin
+      if (u && !u.isAnonymous) setAdmin(await checkAdmin())
+      else setAdmin(false)
     })
   }, [])
 
@@ -83,9 +87,9 @@ export default function Navbar() {
                 </Link>
               ))}
 
-              {/* Auth button */}
+              {/* Auth button — show sign-in for anonymous or unauthenticated */}
               {authReady && (
-                user ? (
+                user && !user.isAnonymous ? (
                   <div className="flex items-center gap-2 mr-2 border-r border-white/20 pr-3">
                     {user.photoURL && (
                       <img src={user.photoURL} alt={user.displayName || ''}
@@ -124,7 +128,7 @@ export default function Navbar() {
 
           {/* Mobile auth */}
           {authReady && (
-            user ? (
+            user && !user.isAnonymous ? (
               <div className="flex items-center gap-2">
                 {user.photoURL && (
                   <img src={user.photoURL} alt=""
