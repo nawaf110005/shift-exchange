@@ -9,7 +9,7 @@ import {
 import { validateEmployeeCode, validateDaysOff, validateReplacementDays } from '@/lib/utils/validation'
 import { X, Plus, Trash2, Loader2, Sparkles, MapPin } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { format, addMonths } from 'date-fns'
+
 import clsx from 'clsx'
 
 const SHIFTS: { value: ShiftType; label: string }[] = [
@@ -24,25 +24,24 @@ interface MatchResult {
 }
 
 interface Props {
-  uid:     string
-  offer?:  Offer | null
-  onClose: () => void
+  uid:          string
+  displayName?: string | null
+  offer?:       Offer | null
+  onClose:      () => void
 }
 
-// ─── Match score colour ───────────────────────────────────────────────────────
 function scoreColor(score: number) {
   if (score >= 75) return { bar: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
   if (score >= 40) return { bar: 'bg-amber-400',   badge: 'bg-amber-50   text-amber-700   border-amber-200'   }
   return                 { bar: 'bg-gray-300',      badge: 'bg-gray-50    text-gray-500    border-gray-200'    }
 }
 
-// ─── Shift label map ──────────────────────────────────────────────────────────
 const shiftLabel: Record<string, string> = { day: 'صباحي', night: 'مسائي', overlap: 'تداخل' }
 
-export default function OfferForm({ uid, offer, onClose }: Props) {
+export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
   const isEdit = !!offer
 
-  const [name,            setName]            = useState(offer?.ownerName    || '')
+  const [name,            setName]            = useState(offer?.ownerName    || displayName || '')
   const [code,            setCode]            = useState(offer?.ownerCode    || '')
   const [station,         setStation]         = useState(offer?.ownerStation || '')
   const [daysOff,         setDaysOff]         = useState<DayOff[]>(offer?.daysOff || [{ date: '', shift: 'day' }])
@@ -50,37 +49,29 @@ export default function OfferForm({ uid, offer, onClose }: Props) {
   const [stations,        setStations]        = useState<Station[]>([])
   const [loading,         setLoading]         = useState(false)
 
-  // Match state
   const [matches,      setMatches]      = useState<MatchResult[]>([])
   const [matchLoading, setMatchLoading] = useState(false)
   const [matchMonth,   setMatchMonth]   = useState('')
 
-  // Date bounds
-  const today   = format(new Date(), 'yyyy-MM-dd')
-  const maxDate = format(addMonths(new Date(), 2), 'yyyy-MM-dd')
+  const today   = new Date().toISOString().split('T')[0]
+  const maxDate = (() => { const d = new Date(); d.setMonth(d.getMonth() + 2); return d.toISOString().split('T')[0] })()
 
   useEffect(() => {
     getStations().then(setStations)
   }, [])
 
-  // ─── Live match lookup ────────────────────────────────────────────────────
   const refreshMatches = useCallback(async (days: DayOff[], replacements: ReplacementDay[]) => {
     const firstValidDate = days.find(d => d.date)?.date
     if (!firstValidDate) { setMatches([]); setMatchMonth(''); return }
-
     const month = firstValidDate.substring(0, 7)
-
     setMatchLoading(true)
     try {
       const allOffers = await getOffersForMonth(month)
-      // Exclude own offers
       const others = allOffers.filter(o => o.ownerUid !== uid && o.id !== offer?.id)
-
       const scored: MatchResult[] = others
         .map(o => ({ offer: o, score: computeMatchScore(days, replacements, o) }))
         .filter(r => r.score > 0)
         .sort((a, b) => b.score - a.score)
-
       setMatches(scored)
       setMatchMonth(month)
     } finally {
@@ -88,33 +79,22 @@ export default function OfferForm({ uid, offer, onClose }: Props) {
     }
   }, [uid, offer?.id])
 
-  // Debounced trigger: re-check whenever daysOff or replacementDays change
   useEffect(() => {
     const timer = setTimeout(() => refreshMatches(daysOff, replacementDays), 600)
     return () => clearTimeout(timer)
   }, [daysOff, replacementDays, refreshMatches])
 
-  // ─── Days Off helpers ─────────────────────────────────────────────────────
-  function addDayOff() {
-    setDaysOff(d => [...d, { date: '', shift: 'day' }])
-  }
-  function removeDayOff(i: number) {
-    setDaysOff(d => d.filter((_, idx) => idx !== i))
-  }
+  function addDayOff() { setDaysOff(d => [...d, { date: '', shift: 'day' }]) }
+  function removeDayOff(i: number) { setDaysOff(d => d.filter((_, idx) => idx !== i)) }
   function updateDayOff(i: number, field: keyof DayOff, value: string) {
-    setDaysOff(d => d.map((item, idx) =>
-      idx === i ? { ...item, [field]: value } : item
-    ))
+    setDaysOff(d => d.map((item, idx) => idx === i ? { ...item, [field]: value } : item))
   }
 
-  // ─── Replacement Days helpers ─────────────────────────────────────────────
   function addReplacement() {
     if (replacementDays.length >= 16) { toast.error('الحد الأقصى 16 يوم'); return }
     setReplacementDays(d => [...d, { date: '', shifts: ['day'] }])
   }
-  function removeReplacement(i: number) {
-    setReplacementDays(d => d.filter((_, idx) => idx !== i))
-  }
+  function removeReplacement(i: number) { setReplacementDays(d => d.filter((_, idx) => idx !== i)) }
   function updateReplacementDate(i: number, value: string) {
     setReplacementDays(d => d.map((item, idx) => idx === i ? { ...item, date: value } : item))
   }
@@ -128,49 +108,28 @@ export default function OfferForm({ uid, offer, onClose }: Props) {
     }))
   }
 
-  // ─── Submit ───────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-
     const codeErr = validateEmployeeCode(code)
     if (codeErr) { toast.error(codeErr); return }
     if (!name.trim()) { toast.error('الاسم مطلوب'); return }
     if (!station)     { toast.error('المحطة مطلوبة'); return }
-
     const daysErr = validateDaysOff(daysOff)
     if (daysErr) { toast.error(daysErr); return }
-
     const offerMonth = daysOff[0].date.substring(0, 7)
     const replErr = validateReplacementDays(replacementDays, offerMonth)
     if (replErr) { toast.error(replErr); return }
-
     if (!isEdit) {
       const duplicate = await hasActiveOfferForMonth(uid, offerMonth)
       if (duplicate) { toast.error('لديك عرض نشط لهذا الشهر بالفعل'); return }
     }
-
     setLoading(true)
     try {
       if (isEdit && offer?.id) {
-        await updateOffer(offer.id, {
-          ownerName:       name.trim(),
-          ownerCode:       code.trim(),
-          ownerStation:    station,
-          daysOff,
-          replacementDays,
-        })
+        await updateOffer(offer.id, { ownerName: name.trim(), ownerCode: code.trim(), ownerStation: station, daysOff, replacementDays })
         toast.success('تم تحديث العرض')
       } else {
-        await createOffer({
-          ownerUid:        uid,
-          ownerName:       name.trim(),
-          ownerCode:       code.trim(),
-          ownerStation:    station,
-          status:          'in_progress',
-          offerMonth,
-          daysOff,
-          replacementDays,
-        })
+        await createOffer({ ownerUid: uid, ownerName: name.trim(), ownerCode: code.trim(), ownerStation: station, status: 'in_progress', offerMonth, daysOff, replacementDays })
         toast.success('تم إنشاء العرض بنجاح ✅')
       }
       onClose()
@@ -187,26 +146,16 @@ export default function OfferForm({ uid, offer, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
       <div className="bg-white w-full sm:max-w-2xl sm:rounded-2xl rounded-t-3xl shadow-2xl max-h-[96vh] flex flex-col"
            style={{ paddingBottom: 'max(0px, var(--safe-bottom))' }}>
-
-        {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden flex-shrink-0">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
-
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
-          <h2 className="text-lg font-bold text-[#1B3A6B]">
-            {isEdit ? 'تعديل العرض' : 'إنشاء عرض جديد'}
-          </h2>
-          <button onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center">
+          <h2 className="text-lg font-bold text-[#1B3A6B]">{isEdit ? 'تعديل العرض' : 'إنشاء عرض جديد'}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center">
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
-
         <form onSubmit={handleSubmit} className="p-5 space-y-5 overflow-y-auto flex-1">
-
-          {/* Owner info */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">الاسم</label>
@@ -228,8 +177,6 @@ export default function OfferForm({ uid, offer, onClose }: Props) {
               </select>
             </div>
           </div>
-
-          {/* Days off */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-semibold text-gray-700">أيام الطلب</label>
@@ -258,8 +205,6 @@ export default function OfferForm({ uid, offer, onClose }: Props) {
               ))}
             </div>
           </div>
-
-          {/* Replacement days */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-semibold text-gray-700">
@@ -282,9 +227,7 @@ export default function OfferForm({ uid, offer, onClose }: Props) {
                         onClick={() => toggleReplacementShift(i, s.value)}
                         className={clsx(
                           'px-2.5 py-2 rounded-lg text-xs font-medium transition-colors min-h-[40px]',
-                          d.shifts.includes(s.value)
-                            ? 'bg-[#1B3A6B] text-white'
-                            : 'bg-gray-100 text-gray-600 active:bg-gray-200'
+                          d.shifts.includes(s.value) ? 'bg-[#1B3A6B] text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'
                         )}>
                         {s.label}
                       </button>
@@ -300,33 +243,22 @@ export default function OfferForm({ uid, offer, onClose }: Props) {
               ))}
             </div>
           </div>
-
-          {/* ─── Live Match Panel ─────────────────────────────────────── */}
           {hasValidDays && (
             <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
-              {/* Panel header */}
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className="w-4 h-4 text-[#2E86AB]" />
-                <p className="text-sm font-semibold text-[#1B3A6B]">
-                  عروض مطابقة محتملة
-                </p>
+                <p className="text-sm font-semibold text-[#1B3A6B]">عروض مطابقة محتملة</p>
                 {matchLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400 mr-auto" />}
               </div>
-
               {!matchLoading && matches.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-2">
-                  لا توجد عروض مطابقة لهذا الشهر حتى الآن
-                </p>
+                <p className="text-xs text-gray-400 text-center py-2">لا توجد عروض مطابقة لهذا الشهر حتى الآن</p>
               )}
-
               {matches.length > 0 && (
                 <div className="space-y-2">
                   {matches.slice(0, 5).map(({ offer: m, score }) => {
                     const { bar, badge } = scoreColor(score)
                     return (
-                      <div key={m.id}
-                        className="bg-white rounded-xl border border-gray-100 px-3 py-2.5 shadow-sm">
-                        {/* Top row: name + score badge */}
+                      <div key={m.id} className="bg-white rounded-xl border border-gray-100 px-3 py-2.5 shadow-sm">
                         <div className="flex items-center justify-between gap-2 mb-1.5">
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-gray-800 truncate">{m.ownerName}</p>
@@ -335,25 +267,16 @@ export default function OfferForm({ uid, offer, onClose }: Props) {
                               <span className="truncate">{m.ownerStation}</span>
                             </div>
                           </div>
-                          <span className={clsx(
-                            'text-xs font-bold px-2.5 py-1 rounded-full border flex-shrink-0',
-                            badge
-                          )}>
+                          <span className={clsx('text-xs font-bold px-2.5 py-1 rounded-full border flex-shrink-0', badge)}>
                             {score}٪
                           </span>
                         </div>
-
-                        {/* Progress bar */}
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-2">
-                          <div className={clsx('h-full rounded-full transition-all', bar)}
-                               style={{ width: `${score}%` }} />
+                          <div className={clsx('h-full rounded-full transition-all', bar)} style={{ width: `${score}%` }} />
                         </div>
-
-                        {/* Their requested days */}
                         <div className="flex flex-wrap gap-1">
                           {m.daysOff.map((d, i) => (
-                            <span key={i}
-                              className="text-[10px] bg-red-50 text-red-600 border border-red-100 px-1.5 py-0.5 rounded-full">
+                            <span key={i} className="text-[10px] bg-red-50 text-red-600 border border-red-100 px-1.5 py-0.5 rounded-full">
                               {d.date.substring(5)} · {shiftLabel[d.shift]}
                             </span>
                           ))}
@@ -361,18 +284,13 @@ export default function OfferForm({ uid, offer, onClose }: Props) {
                       </div>
                     )
                   })}
-
                   {matches.length > 5 && (
-                    <p className="text-xs text-center text-gray-400 pt-1">
-                      + {matches.length - 5} عروض أخرى في الصفحة الرئيسية
-                    </p>
+                    <p className="text-xs text-center text-gray-400 pt-1">+ {matches.length - 5} عروض أخرى في الصفحة الرئيسية</p>
                   )}
                 </div>
               )}
             </div>
           )}
-
-          {/* Actions */}
           <div className="flex gap-3 pt-2 border-t">
             <button type="button" onClick={onClose}
               className="flex-1 border border-gray-300 text-gray-700 py-3.5 rounded-xl text-sm font-medium active:bg-gray-50 transition-colors min-h-[52px]">
