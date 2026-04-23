@@ -99,9 +99,15 @@ export async function getMyOffers(uid: string): Promise<Offer[]> {
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Offer))
 }
 
-/** Get offers selected by a specific user (Selected Offers page) */
+/** Get offers selected by a specific user (Selected Offers page — includes confirmed) */
 export async function getSelectedOffers(uid: string): Promise<Offer[]> {
-  const q = query(offersCol(), where('selectorUid', '==', uid), where('status', '!=', 'confirmed'))
+  // Query by selectorUid only (no inequality filter) — avoids index/compat issues.
+  // Client page renders both 'selected' (can cancel) and 'confirmed' (final) correctly.
+  const q = query(
+    offersCol(),
+    where('selectorUid', '==', uid),
+    orderBy('createdAt', 'desc')
+  )
   const snap = await getDocs(q)
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Offer))
 }
