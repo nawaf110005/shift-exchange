@@ -11,17 +11,20 @@ import toast from 'react-hot-toast'
 import clsx from 'clsx'
 
 export default function AdminPage() {
-  const [user,    setUser]    = useState<User | null>(null)
-  const [admin,   setAdmin]   = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [offers,  setOffers]  = useState<Offer[]>([])
-  const [stations, setStations] = useState<Station[]>([])
+  const [user,       setUser]       = useState<User | null>(null)
+  const [admin,      setAdmin]      = useState(false)
+  const [loading,    setLoading]    = useState(true)
+  const [offers,     setOffers]     = useState<Offer[]>([])
+  const [stations,   setStations]   = useState<Station[]>([])
   const [newStation, setNewStation] = useState('')
 
-  // Filters — default to showing only 'selected' offers
-  const [filterStatus,  setFilterStatus]  = useState<OfferStatus | ''>('selected')
+  // Filters — default: current month, show selected + confirmed (action-needed offers)
+  const [filterStatus,  setFilterStatus]  = useState<OfferStatus | ''>('')
   const [filterStation, setFilterStation] = useState('')
-  const [filterMonth,   setFilterMonth]   = useState('')
+  const [filterMonth,   setFilterMonth]   = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
 
   useEffect(() => {
     return onAuth(async (u) => {
@@ -162,10 +165,10 @@ export default function AdminPage() {
           <label className="block text-xs text-gray-500 mb-1">الحالة</label>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as OfferStatus | '')}
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2E86AB]">
-            <option value="">الكل</option>
+            <option value="">مختارة + مؤكدة</option>
             <option value="in_progress">متاح</option>
-            <option value="selected">تم الاختيار</option>
-            <option value="confirmed">مؤكد</option>
+            <option value="selected">تم الاختيار فقط</option>
+            <option value="confirmed">مؤكد فقط</option>
           </select>
         </div>
         <div>
