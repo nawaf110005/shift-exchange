@@ -1,13 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { Offer, getStations, Station } from '@/lib/firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { functions } from '@/lib/firebase/config'
+import { useState, useEffect } from 'react'
+import { Offer, getStations, Station, selectOfferDirect } from '@/lib/firebase/firestore'
 import { validateEmployeeCode } from '@/lib/utils/validation'
-import { X, Loader2 } from 'lucide-react'
+import { getCurrentUser, signInWithGoogle } from '@/lib/firebase/auth'
+import { X, Loader2, LogIn } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useEffect } from 'react'
 
 interface Props {
   offer:   Offer
@@ -15,12 +13,14 @@ interface Props {
 }
 
 export default function SelectOfferModal({ offer, onClose }: Props) {
-  const [name,     setName]     = useState('')
-  const [code,     setCode]     = useState('')
-  const [station,  setStation]  = useState('')
-  const [stations, setStations] = useState<Station[]>([])
-  const [loading,  setLoading]  = useState(false)
-  const [errors,   setErrors]   = useState<Record<string, string>>({})
+  const currentUser = getCurrentUser()
+  const [name,       setName]       = useState(currentUser?.displayName || '')
+  const [code,       setCode]       = useState('')
+  const [station,    setStation]    = useState('')
+  const [stations,   setStations]   = useState<Station[]>([])
+  const [loading,    setLoading]    = useState(false)
+  const [signingIn,  setSigningIn]  = useState(false)
+  const [errors,     setErrors]     = useState<Record<string, string>>({})
 
   useEffect(() => {
     getStations().then(setStations)
@@ -36,18 +36,26 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
     return Object.keys(errs).length === 0
   }
 
+  async function handleSignIn() {
+    setSigningIn(true)
+    try { await signInWithGoogle() }
+    catch (e: any) {
+      if (e?.code !== 'auth/popup-closed-by-user') toast.error('فشل تسجيل الدخول')
+    } finally { setSigningIn(false) }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!validate()) return
     setLoading(true)
     try {
-      const selectOffer = httpsCallable(functions, 'selectOffer')
-      await selectOffer({
-        offerId:         offer.id,
-        selectorName:    name.trim(),
-        selectorCode:    code.trim(),
-        selectorStation: station,
-      })
+      await selectOfferDirect(
+        offer.id!,
+        currentUser.uid,
+        name.trim(),
+        code.trim(),
+        station,
+      )
       toast.success('تم اختيار العرض بنجاح ✅')
       onClose()
     } catch (err: any) {
@@ -59,19 +67,16 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
   }
 
   return (
-    /* On mobile: bottom sheet. On desktop: centered modal */
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl shadow-2xl max-h-[92vh] overflow-y-auto"
            style={{ paddingBottom: 'max(1.25rem, var(--safe-bottom))' }}>
-        {/* Drag handle (mobile) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <h2 className="text-lg font-bold text-[#1B3A6B]">اختيار العرض</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center">
@@ -79,7 +84,6 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
           </button>
         </div>
 
-        {/* Offer summary */}
         <div className="px-5 py-3 bg-blue-50 border-b">
           <p className="text-sm text-gray-600">
             عرض <span className="font-semibold text-[#1B3A6B]">{offer.ownerName}</span>
@@ -87,8 +91,18 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        {!currentUser && (
+          <div className="px-5 py-6 flex flex-col items-center gap-3 text-center">
+            <p className="text-sm text-gray-600">يجب تسجيل الدخول لاختيار العرض</p>
+            <button onClick={handleSignIn} disabled={signingIn}
+              className="flex items-center gap-2 bg-[#1B3A6B] text-white px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60 min-h-[44px]">
+              <LogIn className="w-4 h-4" />
+              {signingIn ? 'جارٍ تسجيل الدخول…' : 'دخول بـ Google'}
+            </button>
+          </div>
+        )}
+
+        {currentUser && <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">اسمك</label>
             <input
@@ -148,7 +162,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
               تأكيد الاختيار
             </button>
           </div>
-        </form>
+        </form>}
       </div>
     </div>
   )
