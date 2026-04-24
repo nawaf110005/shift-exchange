@@ -39,8 +39,10 @@ export default function AdminPage() {
   const [adminLoading,   setAdminLoading]   = useState<Record<string, boolean>>({})
   const [usersLoading,   setUsersLoading]   = useState(false)
   // Confirm dialog — only shown when no valid name is saved in localStorage
-  const [confirmModal,      setConfirmModal]      = useState<{ offerId: string } | null>(null)
-  const [confirmNameInput,  setConfirmNameInput]  = useState('')
+  const [confirmModal,        setConfirmModal]        = useState<{ offerId: string } | null>(null)
+  const [confirmNameInput,    setConfirmNameInput]    = useState('')
+  const [editingConfirmName,  setEditingConfirmName]  = useState(false)
+  const [profileNameDraft,    setProfileNameDraft]    = useState('')
 
   // Filters — default: current month, action-needed statuses (selected + confirmed)
   const [filterStatus,  setFilterStatus]  = useState<OfferStatus | ''>('')
@@ -311,6 +313,66 @@ export default function AdminPage() {
   // ── Admin Dashboard ─────────────────────────────────────────────
   return (
     <div className="pb-28">
+
+      {/* ── Confirming-name profile card ─────────────────────────── */}
+      <div className="bg-indigo-50 border border-indigo-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-indigo-500 mb-1 uppercase tracking-wide">اسمك كمؤكد</p>
+          {editingConfirmName ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                autoFocus
+                type="text"
+                value={profileNameDraft}
+                onChange={e => setProfileNameDraft(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && profileNameDraft.trim().length >= 3) {
+                    const name = profileNameDraft.trim()
+                    localStorage.setItem('admin_confirm_name', name)
+                    setConfirmNameInput(name)
+                    setEditingConfirmName(false)
+                  }
+                  if (e.key === 'Escape') setEditingConfirmName(false)
+                }}
+                placeholder="الاسم الكامل (٣ أحرف على الأقل)"
+                className="border border-indigo-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white w-52"
+              />
+              <button
+                onClick={() => {
+                  const name = profileNameDraft.trim()
+                  if (name.length < 3) return
+                  localStorage.setItem('admin_confirm_name', name)
+                  setConfirmNameInput(name)
+                  setEditingConfirmName(false)
+                }}
+                disabled={profileNameDraft.trim().length < 3}
+                className="flex items-center gap-1.5 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-40 transition-colors"
+              >
+                <Check className="w-3.5 h-3.5" /> حفظ
+              </button>
+              <button
+                onClick={() => setEditingConfirmName(false)}
+                className="p-1.5 text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <p className="text-lg font-bold text-indigo-900">
+              {confirmNameInput || <span className="text-indigo-300 font-normal text-sm">لم يُحدَّد بعد — اضغط تعديل</span>}
+            </p>
+          )}
+        </div>
+        {!editingConfirmName && (
+          <button
+            onClick={() => { setProfileNameDraft(confirmNameInput); setEditingConfirmName(true) }}
+            className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 px-3 py-2 rounded-lg transition-colors shrink-0 font-medium"
+          >
+            <Pencil className="w-3.5 h-3.5" /> تعديل
+          </button>
+        )}
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -360,34 +422,6 @@ export default function AdminPage() {
           <label className="block text-xs text-gray-500 mb-1">الشهر</label>
           <input type="month" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB]" />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">اسم المؤكد</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={confirmNameInput}
-              onChange={e => setConfirmNameInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && confirmNameInput.trim().length >= 3) {
-                  localStorage.setItem('admin_confirm_name', confirmNameInput.trim())
-                }
-              }}
-              placeholder="اسمك كمؤكد"
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB] w-36"
-            />
-            <button
-              onClick={() => {
-                const name = confirmNameInput.trim()
-                if (name.length < 3) return
-                localStorage.setItem('admin_confirm_name', name)
-              }}
-              disabled={confirmNameInput.trim().length < 3}
-              className="bg-[#1B3A6B] text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-[#142D52] disabled:opacity-40 transition-colors"
-            >
-              حفظ
-            </button>
-          </div>
         </div>
         <button onClick={loadOffers}
           className="bg-[#1B3A6B] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#142D52] transition-colors">
