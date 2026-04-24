@@ -5,13 +5,12 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { onAuth, isAdmin as checkAdmin, signInWithGoogle, logOut, ensureAnonymousAuth } from '@/lib/firebase/auth'
 import { User } from 'firebase/auth'
-import { CalendarDays, ListChecks, Bookmark, ShieldCheck, LogIn, LogOut } from 'lucide-react'
+import { CalendarDays, ListChecks, ShieldCheck, LogIn, LogOut } from 'lucide-react'
 import clsx from 'clsx'
 
 const navItems = [
-  { href: '/offers',    label: 'العروض',  icon: CalendarDays },
-  { href: '/my-offers', label: 'عروضي',   icon: ListChecks   },
-  { href: '/selected',  label: 'مختارة',  icon: Bookmark     },
+  { href: '/offers',    label: 'العروض', icon: CalendarDays },
+  { href: '/my-offers', label: 'عروضي',  icon: ListChecks   },
 ]
 
 export default function Navbar() {
