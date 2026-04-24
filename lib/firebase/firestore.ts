@@ -228,8 +228,33 @@ export async function createStation(name: string): Promise<string> {
   return ref.id
 }
 
+export async function updateStation(id: string, name: string): Promise<void> {
+  await updateDoc(doc(db, 'stations', id), { name })
+}
+
+export async function deleteStation(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'stations', id))
+}
+
 export async function toggleStation(id: string, active: boolean): Promise<void> {
   await updateDoc(doc(db, 'stations', id), { active })
+}
+
+// ─── User Profiles (admin) ────────────────────────────────────────────────────
+
+export interface UserProfile {
+  uid: string
+  displayName?: string
+  email?: string
+  photoURL?: string
+  isAdmin: boolean
+  createdAt?: Timestamp
+}
+
+/** Admin: fetch all user profiles (security rule allows admin to list this collection) */
+export async function getAllUserProfiles(): Promise<UserProfile[]> {
+  const snap = await getDocs(collection(db, 'userProfiles'))
+  return snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile))
 }
 
 // ─── Matching ─────────────────────────────────────────────────────────────────

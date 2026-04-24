@@ -16,7 +16,7 @@ function formatTimestamp(ts: any): string {
   return date.toLocaleDateString('ar-SA', { year: 'numeric', month: '2-digit', day: '2-digit' })
 }
 
-export function exportOffersToExcel(offers: Offer[], filename = 'تقرير_تبادل_الدوام') {
+export function exportOffersToExcel(offers: Offer[], filename = 'تقرير_تبديل_الدوام') {
   const rows = offers.map(o => ({
     'اسم صاحب العرض':      o.ownerName,
     'رقم الموظف':           o.ownerCode,

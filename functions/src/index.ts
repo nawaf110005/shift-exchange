@@ -219,6 +219,36 @@ export const grantAdminRole = onCall(async (request) => {
   }
 })
 
+// ─── revokeAdminRole ──────────────────────────────────────────────────────────
+/**
+ * Revoke admin role by setting isAdmin:false in userProfiles.
+ * Only callable by existing admins. Cannot self-revoke.
+ */
+export const revokeAdminRole = onCall(async (request) => {
+  await assertAdmin(request.auth?.uid)
+
+  const { email } = request.data as SetAdminClaimInput
+  if (!email) throw new HttpsError('invalid-argument', 'البريد الإلكتروني مطلوب')
+
+  try {
+    const user = await admin.auth().getUserByEmail(email)
+    if (user.uid === request.auth?.uid) {
+      throw new HttpsError('permission-denied', 'لا يمكنك إلغاء صلاحيتك الخاصة')
+    }
+    await db.collection('userProfiles').doc(user.uid).set(
+      { isAdmin: false },
+      { merge: true }
+    )
+    return { success: true, message: `تم إلغاء صلاحية الإدارة من ${email}` }
+  } catch (err: any) {
+    if (err instanceof HttpsError) throw err
+    if (err?.code === 'auth/user-not-found') {
+      throw new HttpsError('not-found', `المستخدم ${email} غير موجود`)
+    }
+    throw new HttpsError('internal', 'حدث خطأ أثناء إلغاء الصلاحية')
+  }
+})
+
 // ─── adminConfirmOffer ────────────────────────────────────────────────────────
 /**
  * Admin confirms a selected offer — moves it to 'confirmed' (terminal state).

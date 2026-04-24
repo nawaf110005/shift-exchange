@@ -20,10 +20,10 @@ export interface ValidationError {
   message: string
 }
 
-/** Validate employee code: exactly 6 numeric digits */
+/** Validate employee code: optional, up to 7 numeric digits */
 export function validateEmployeeCode(code: string): string | null {
-  if (!code) return 'رقم الموظف مطلوب'
-  if (!/^\d{6}$/.test(code)) return 'رقم الموظف يجب أن يكون 6 أرقام فقط'
+  if (!code || code.trim() === '') return null  // optional
+  if (!/^\d{1,7}$/.test(code.trim())) return 'رقم الموظف يجب أن يكون أرقاماً فقط (7 أرقام كحد أقصى)'
   return null
 }
 

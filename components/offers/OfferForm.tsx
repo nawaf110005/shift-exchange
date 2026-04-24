@@ -212,9 +212,12 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2E86AB]" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">رقم الموظف</label>
-              <input value={code} onChange={e => setCode(e.target.value.replace(/\D/g,'').slice(0,6))}
-                placeholder="6 أرقام" maxLength={6} dir="ltr" type="tel" inputMode="numeric"
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                رقم الموظف
+                <span className="text-xs text-gray-400 font-normal mr-1">(اختياري)</span>
+              </label>
+              <input value={code} onChange={e => setCode(e.target.value.replace(/\D/g,'').slice(0,7))}
+                placeholder="حتى 7 أرقام" maxLength={7} dir="ltr" type="tel" inputMode="numeric"
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2E86AB]" />
             </div>
             <div>

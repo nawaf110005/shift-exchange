@@ -7,7 +7,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'تبديل الشفتات',
-  description: 'منصة تبادل عروض الدوام للموظفين',
+  description: 'منصة تبديل عروض الدوام للموظفين',
   manifest: '/manifest.json',
 }
 

@@ -3,13 +3,18 @@
 import { useState, useEffect } from 'react'
 import { Offer, selectOfferDirect } from '@/lib/firebase/firestore'
 import { getCurrentUser, signInWithGoogle, onAuth } from '@/lib/firebase/auth'
-import { X, Loader2, LogIn, CheckCircle } from 'lucide-react'
+import { X, Loader2, LogIn, CheckCircle, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { User } from 'firebase/auth'
+import clsx from 'clsx'
 
 interface Props {
   offer:   Offer
   onClose: () => void
+}
+
+const shiftLabel: Record<string, string> = {
+  day: 'صباحي', night: 'مسائي', overlap: 'تداخل',
 }
 
 export default function SelectOfferModal({ offer, onClose }: Props) {
@@ -23,15 +28,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
     return onAuth((u) => setUser(u))
   }, [])
 
-  // Auto-select as soon as we have a real (non-anonymous) user and haven't already done so
-  useEffect(() => {
-    if (user && !user.isAnonymous && !done && !loading) {
-      handleSelect()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
-
-  async function handleSelect() {
+  async function handleConfirm() {
     if (!user || user.isAnonymous) return
     setLoading(true)
     try {
@@ -44,7 +41,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
       )
       setDone(true)
       toast.success('تم اختيار العرض بنجاح ✅')
-      setTimeout(onClose, 1200)
+      setTimeout(onClose, 1400)
     } catch (err: any) {
       toast.error(err?.message || 'حدث خطأ، يرجى المحاولة مجدداً')
       setLoading(false)
@@ -62,10 +59,12 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
     >
-      <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl shadow-2xl"
-           style={{ paddingBottom: 'max(1.25rem, var(--safe-bottom))' }}>
+      <div
+        className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl shadow-2xl"
+        style={{ paddingBottom: 'max(1.25rem, var(--safe-bottom))' }}
+      >
         {/* Drag handle (mobile) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
@@ -73,29 +72,36 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b">
-          <h2 className="text-lg font-bold text-[#1B3A6B]">اختيار العرض</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center">
+          <h2 className="text-lg font-bold text-[#1B3A6B]">
+            {done ? 'تم الاختيار!' : 'تأكيد اختيار العرض'}
+          </h2>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="p-2 hover:bg-gray-100 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center disabled:opacity-40"
+          >
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
         {/* Offer summary */}
         <div className="px-5 py-3 bg-blue-50 border-b">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 mb-1">
             عرض <span className="font-semibold text-[#1B3A6B]">{offer.ownerName}</span>
             {' '} — <span className="text-[#2E86AB]">{offer.ownerStation}</span>
           </p>
-          <div className="flex flex-wrap gap-1 mt-2">
+          <div className="flex flex-wrap gap-1 mt-1.5">
             {offer.daysOff.map((d, i) => (
               <span key={i} className="text-xs bg-red-50 text-red-700 border border-red-100 px-2 py-0.5 rounded-full">
-                {d.date} · {{ day: 'صباحي', night: 'مسائي', overlap: 'تداخل' }[d.shift as 'day'|'night'|'overlap']}
+                {d.date} · {shiftLabel[d.shift as string] ?? d.shift}
               </span>
             ))}
           </div>
         </div>
 
         <div className="px-5 py-6">
-          {/* Not logged in */}
+
+          {/* ── Not logged in ──────────────────────────────────────── */}
           {!user && (
             <div className="flex flex-col items-center gap-3 text-center">
               <p className="text-sm text-gray-600">يجب تسجيل الدخول لاختيار العرض</p>
@@ -107,7 +113,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
             </div>
           )}
 
-          {/* Anonymous — must register first */}
+          {/* ── Anonymous user ─────────────────────────────────────── */}
           {user?.isAnonymous && (
             <div className="flex flex-col items-center gap-3 text-center">
               <p className="text-sm text-gray-700 font-semibold">سجّل بـ Google أولاً لاختيار عرض</p>
@@ -120,21 +126,85 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
             </div>
           )}
 
-          {/* Authenticated — auto-selecting, show progress/done state */}
+          {/* ── Authenticated — confirmation / done ────────────────── */}
           {user && !user.isAnonymous && (
-            <div className="flex flex-col items-center gap-3 text-center py-4">
+            <>
               {done ? (
-                <>
-                  <CheckCircle className="w-12 h-12 text-green-500" />
+                /* Success state */
+                <div className="flex flex-col items-center gap-3 text-center py-4">
+                  <CheckCircle className="w-14 h-14 text-green-500" />
                   <p className="text-base font-semibold text-green-700">تم اختيار العرض بنجاح!</p>
-                </>
+                  <p className="text-sm text-gray-500">سيتواصل معك صاحب العرض للتأكيد</p>
+                </div>
               ) : (
-                <>
-                  <Loader2 className="w-10 h-10 animate-spin text-[#2E86AB]" />
-                  <p className="text-sm text-gray-500">جارٍ تسجيل اختيارك…</p>
-                </>
+                /* Confirmation step */
+                <div className="space-y-5">
+                  {/* Who is claiming */}
+                  <div className="bg-gray-50 rounded-xl border border-gray-200 px-4 py-3">
+                    <p className="text-xs text-gray-400 mb-1">سيتم تقديم طلب الاختيار باسم</p>
+                    <div className="flex items-center gap-2.5">
+                      {user.photoURL ? (
+                        <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-[#1B3A6B]/10 flex items-center justify-center">
+                          <span className="text-xs font-bold text-[#1B3A6B]">
+                            {user.displayName?.[0] ?? '?'}
+                          </span>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">{user.displayName}</p>
+                        <p className="text-xs text-gray-400">{user.email}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Replacement days offered by the other party */}
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1.5">الأيام البديلة التي يعرضها صاحب العرض</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {offer.replacementDays.map((r, i) => (
+                        <span key={i} className="text-xs bg-green-50 text-green-700 border border-green-100 px-2 py-0.5 rounded-full">
+                          {r.date} · {r.shifts.map(s => shiftLabel[s] ?? s).join(' / ')}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Notice */}
+                  <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                    <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-700">
+                      بعد تقديم طلبك، سيظهر العرض كـ «تم الاختيار» وينتظر قبول صاحبه.
+                      يمكنك إلغاء اختيارك من صفحة «عروضي المختارة» قبل التأكيد النهائي.
+                    </p>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      disabled={loading}
+                      className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 min-h-[48px]"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirm}
+                      disabled={loading}
+                      className="flex-1 bg-[#1B3A6B] text-white py-3 rounded-xl text-sm font-semibold hover:bg-[#142D52] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-h-[48px]"
+                    >
+                      {loading
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <CheckCircle className="w-4 h-4" />}
+                      تأكيد الاختيار
+                    </button>
+                  </div>
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>

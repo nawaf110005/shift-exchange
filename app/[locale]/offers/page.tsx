@@ -63,7 +63,7 @@ export default function OffersPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1B3A6B]">عروض تبادل الدوام</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1B3A6B]">عروض تبديل الدوام</h1>
           <p className="text-gray-500 text-sm mt-0.5">{offers.length} عرض متاح</p>
         </div>
 

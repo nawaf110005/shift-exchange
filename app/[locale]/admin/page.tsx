@@ -1,25 +1,41 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { httpsCallable } from 'firebase/functions'
+import { functions } from '@/lib/firebase/config'
 import { signInWithGoogle, logOut, isAdmin as checkAdmin, onAuth } from '@/lib/firebase/auth'
-import { getAllOffersAdmin, updateOffer, deleteOffer, ownerAcceptOffer, getStations, createStation, Offer, Station, OfferStatus } from '@/lib/firebase/firestore'
+import {
+  getAllOffersAdmin, updateOffer, deleteOffer, ownerAcceptOffer,
+  getStations, createStation, updateStation, deleteStation, toggleStation,
+  getAllUserProfiles,
+  Offer, Station, OfferStatus, UserProfile,
+} from '@/lib/firebase/firestore'
 import { exportOffersToExcel } from '@/lib/utils/exportExcel'
 import { statusColor, statusLabel } from '@/lib/utils/validation'
-import { ShieldCheck, LogOut, Download, Trash2, CheckCircle, Loader2, Plus } from 'lucide-react'
+import {
+  ShieldCheck, LogOut, Download, Trash2, CheckCircle, Loader2, Plus,
+  Pencil, Check, X, Eye, EyeOff, Search, Shield, ShieldOff, RefreshCw,
+} from 'lucide-react'
 import { User } from 'firebase/auth'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 
 export default function AdminPage() {
-  const [user,       setUser]       = useState<User | null>(null)
-  const [admin,      setAdmin]      = useState(false)
-  const [loading,    setLoading]    = useState(true)
-  const [offers,     setOffers]     = useState<Offer[]>([])
-  const [stations,   setStations]   = useState<Station[]>([])
-  const [newStation, setNewStation] = useState('')
-  const [confirming, setConfirming] = useState<Record<string, boolean>>({})
+  const [user,           setUser]           = useState<User | null>(null)
+  const [admin,          setAdmin]          = useState(false)
+  const [loading,        setLoading]        = useState(true)
+  const [offers,         setOffers]         = useState<Offer[]>([])
+  const [stations,       setStations]       = useState<Station[]>([])
+  const [newStation,     setNewStation]     = useState('')
+  const [confirming,     setConfirming]     = useState<Record<string, boolean>>({})
+  const [editingStation, setEditingStation] = useState<{ id: string; name: string } | null>(null)
+  const [stationSaving,  setStationSaving]  = useState(false)
+  const [userProfiles,   setUserProfiles]   = useState<UserProfile[]>([])
+  const [userSearch,     setUserSearch]     = useState('')
+  const [adminLoading,   setAdminLoading]   = useState<Record<string, boolean>>({})
+  const [usersLoading,   setUsersLoading]   = useState(false)
 
-  // Filters — default: current month, all action-needed statuses (selected + confirmed)
+  // Filters — default: current month, action-needed statuses (selected + confirmed)
   const [filterStatus,  setFilterStatus]  = useState<OfferStatus | ''>('')
   const [filterStation, setFilterStation] = useState('')
   const [filterMonth,   setFilterMonth]   = useState(() => {
@@ -36,6 +52,7 @@ export default function AdminPage() {
         if (adminFlag) {
           loadOffers()
           getStations(false).then(setStations)
+          loadUserProfiles()
         }
       } else {
         setAdmin(false)
@@ -46,11 +63,24 @@ export default function AdminPage() {
 
   async function loadOffers() {
     const data = await getAllOffersAdmin({
-      status:  filterStatus  as OfferStatus || undefined,
+      status:  filterStatus as OfferStatus || undefined,
       station: filterStation || undefined,
       month:   filterMonth   || undefined,
     })
     setOffers(data)
+  }
+
+  async function loadUserProfiles() {
+    setUsersLoading(true)
+    try {
+      const profiles = await getAllUserProfiles()
+      // Only show users who have signed in with Google (have email)
+      setUserProfiles(profiles.filter(p => p.email))
+    } catch {
+      toast.error('حدث خطأ أثناء تحميل المستخدمين')
+    } finally {
+      setUsersLoading(false)
+    }
   }
 
   async function handleGoogleLogin() {
@@ -111,7 +141,78 @@ export default function AdminPage() {
     toast.success('تمت إضافة المحطة')
   }
 
-  // ── Login screen ────────────────────────────────────────────────
+  async function handleSaveStation() {
+    if (!editingStation || !editingStation.name.trim()) return
+    setStationSaving(true)
+    try {
+      await updateStation(editingStation.id, editingStation.name.trim())
+      setEditingStation(null)
+      getStations(false).then(setStations)
+      toast.success('تم تحديث اسم المحطة')
+    } catch {
+      toast.error('حدث خطأ أثناء التحديث')
+    } finally {
+      setStationSaving(false)
+    }
+  }
+
+  async function handleToggleStation(id: string, active: boolean) {
+    try {
+      await toggleStation(id, active)
+      getStations(false).then(setStations)
+      toast.success(active ? 'تم تفعيل المحطة' : 'تم تعطيل المحطة')
+    } catch {
+      toast.error('حدث خطأ')
+    }
+  }
+
+  async function handleDeleteStation(id: string, name: string) {
+    if (!confirm(`هل أنت متأكد من حذف محطة "${name}"؟`)) return
+    try {
+      await deleteStation(id)
+      getStations(false).then(setStations)
+      toast.success('تم حذف المحطة')
+    } catch {
+      toast.error('حدث خطأ أثناء الحذف')
+    }
+  }
+
+  async function handleGrantAdmin(email: string, uid: string) {
+    setAdminLoading(prev => ({ ...prev, [uid]: true }))
+    try {
+      const fn = httpsCallable(functions, 'grantAdminRole')
+      await fn({ email })
+      toast.success(`تم منح صلاحية الإدارة لـ ${email}`)
+      await loadUserProfiles()
+    } catch (err: any) {
+      toast.error(err.message || 'حدث خطأ أثناء منح الصلاحية')
+    } finally {
+      setAdminLoading(prev => { const n = { ...prev }; delete n[uid]; return n })
+    }
+  }
+
+  async function handleRevokeAdmin(email: string, uid: string) {
+    if (!confirm(`هل أنت متأكد من إلغاء صلاحية الإدارة من ${email}؟`)) return
+    setAdminLoading(prev => ({ ...prev, [uid]: true }))
+    try {
+      const fn = httpsCallable(functions, 'revokeAdminRole')
+      await fn({ email })
+      toast.success(`تم إلغاء صلاحية الإدارة من ${email}`)
+      await loadUserProfiles()
+    } catch (err: any) {
+      toast.error(err.message || 'حدث خطأ أثناء إلغاء الصلاحية')
+    } finally {
+      setAdminLoading(prev => { const n = { ...prev }; delete n[uid]; return n })
+    }
+  }
+
+  const filteredUsers = userProfiles.filter(p =>
+    !userSearch ||
+    p.displayName?.toLowerCase().includes(userSearch.toLowerCase()) ||
+    p.email?.toLowerCase().includes(userSearch.toLowerCase())
+  )
+
+  // ── Loading screen ───────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex justify-center items-center py-40">
@@ -120,6 +221,7 @@ export default function AdminPage() {
     )
   }
 
+  // ── Login screen ────────────────────────────────────────────────
   if (!user || !admin) {
     return (
       <div className="max-w-md mx-auto mt-20 bg-white rounded-2xl shadow-xl p-8 text-center">
@@ -270,27 +372,253 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Station management */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h2 className="text-lg font-bold text-[#1B3A6B] mb-4">إدارة المحطات</h2>
-        <div className="flex gap-3 mb-4">
-          <input value={newStation} onChange={e => setNewStation(e.target.value)}
-            placeholder="اسم المحطة الجديدة"
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB]" />
-          <button onClick={handleAddStation}
-            className="flex items-center gap-2 bg-[#1B3A6B] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#142D52] transition-colors">
-            <Plus className="w-4 h-4" /> إضافة
+      {/* ── Station Management ──────────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
+        {/* Section header + add form */}
+        <div className="px-5 py-4 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-[#1B3A6B] mb-3">إدارة المحطات</h2>
+          <div className="flex gap-3">
+            <input
+              value={newStation}
+              onChange={e => setNewStation(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddStation()}
+              placeholder="اسم المحطة الجديدة"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB]"
+            />
+            <button
+              onClick={handleAddStation}
+              disabled={!newStation.trim()}
+              className="flex items-center gap-2 bg-[#1B3A6B] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#142D52] transition-colors disabled:opacity-40"
+            >
+              <Plus className="w-4 h-4" /> إضافة
+            </button>
+          </div>
+        </div>
+
+        {/* Stations table */}
+        {stations.length === 0 ? (
+          <p className="text-center text-gray-400 py-8">لا توجد محطات</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-xs uppercase">
+                  <th className="text-right px-5 py-3 font-medium">اسم المحطة</th>
+                  <th className="text-right px-5 py-3 font-medium">الحالة</th>
+                  <th className="text-right px-5 py-3 font-medium">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {stations.map((s, i) => (
+                  <tr key={s.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                    {/* Name cell */}
+                    <td className="px-5 py-3">
+                      {editingStation?.id === s.id ? (
+                        <input
+                          value={editingStation.name}
+                          onChange={e => setEditingStation({ ...editingStation, name: e.target.value })}
+                          onKeyDown={e => { if (e.key === 'Enter') handleSaveStation(); if (e.key === 'Escape') setEditingStation(null) }}
+                          autoFocus
+                          className="border border-[#2E86AB] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB] w-full max-w-xs"
+                        />
+                      ) : (
+                        <span className={clsx('font-medium', !s.active && 'text-gray-400 line-through')}>
+                          {s.name}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Status cell */}
+                    <td className="px-5 py-3">
+                      <span className={clsx(
+                        'text-xs font-medium px-2.5 py-1 rounded-full',
+                        s.active
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-400'
+                      )}>
+                        {s.active ? 'نشط' : 'معطل'}
+                      </span>
+                    </td>
+
+                    {/* Actions cell */}
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        {editingStation?.id === s.id ? (
+                          <>
+                            <button
+                              onClick={handleSaveStation}
+                              disabled={stationSaving}
+                              className="flex items-center gap-1 text-xs bg-[#1B3A6B] text-white hover:bg-[#142D52] px-2.5 py-1.5 rounded-md transition-colors disabled:opacity-50"
+                            >
+                              {stationSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                              حفظ
+                            </button>
+                            <button
+                              onClick={() => setEditingStation(null)}
+                              className="flex items-center gap-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-100 px-2.5 py-1.5 rounded-md transition-colors"
+                            >
+                              <X className="w-3 h-3" /> إلغاء
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {/* Edit */}
+                            <button
+                              onClick={() => setEditingStation({ id: s.id!, name: s.name })}
+                              className="p-1.5 text-gray-400 hover:text-[#1B3A6B] hover:bg-blue-50 rounded-md transition-colors"
+                              title="تعديل الاسم"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            {/* Toggle active */}
+                            <button
+                              onClick={() => handleToggleStation(s.id!, !s.active)}
+                              className={clsx(
+                                'p-1.5 rounded-md transition-colors',
+                                s.active
+                                  ? 'text-gray-400 hover:text-orange-500 hover:bg-orange-50'
+                                  : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                              )}
+                              title={s.active ? 'تعطيل المحطة' : 'تفعيل المحطة'}
+                            >
+                              {s.active ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                            {/* Delete */}
+                            <button
+                              onClick={() => handleDeleteStation(s.id!, s.name)}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                              title="حذف المحطة"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Admin Role Management ───────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {/* Section header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-lg font-bold text-[#1B3A6B]">إدارة صلاحيات المسؤولين</h2>
+            <p className="text-xs text-gray-400 mt-0.5">منح أو إلغاء صلاحية الإدارة للمستخدمين</p>
+          </div>
+          <button
+            onClick={loadUserProfiles}
+            disabled={usersLoading}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#1B3A6B] hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors"
+          >
+            <RefreshCw className={clsx('w-4 h-4', usersLoading && 'animate-spin')} />
+            تحديث
           </button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {stations.map(s => (
-            <span key={s.id}
-              className={clsx('px-3 py-1.5 rounded-full text-sm font-medium border',
-                s.active ? 'bg-blue-50 text-[#1B3A6B] border-blue-200' : 'bg-gray-50 text-gray-400 border-gray-200 line-through')}>
-              {s.name}
-            </span>
-          ))}
+
+        {/* Search */}
+        <div className="px-5 py-3 border-b border-gray-100">
+          <div className="relative max-w-sm">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              value={userSearch}
+              onChange={e => setUserSearch(e.target.value)}
+              placeholder="بحث بالاسم أو البريد الإلكتروني"
+              className="w-full pr-9 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB]"
+            />
+          </div>
         </div>
+
+        {/* Users table */}
+        {usersLoading ? (
+          <div className="flex justify-center items-center py-10">
+            <Loader2 className="w-6 h-6 animate-spin text-[#2E86AB]" />
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <p className="text-center text-gray-400 py-8">
+            {userSearch ? 'لا توجد نتائج للبحث' : 'لا يوجد مستخدمون'}
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-xs uppercase">
+                  <th className="text-right px-5 py-3 font-medium">الاسم</th>
+                  <th className="text-right px-5 py-3 font-medium">البريد الإلكتروني</th>
+                  <th className="text-right px-5 py-3 font-medium">الصلاحية</th>
+                  <th className="text-right px-5 py-3 font-medium">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredUsers.map((u, i) => {
+                  const isSelf = u.uid === user?.uid
+                  const isLoading = !!adminLoading[u.uid]
+                  return (
+                    <tr key={u.uid} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          {u.photoURL ? (
+                            <img src={u.photoURL} alt="" className="w-7 h-7 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-[#1B3A6B]/10 flex items-center justify-center">
+                              <span className="text-xs font-bold text-[#1B3A6B]">
+                                {u.displayName?.[0] ?? '?'}
+                              </span>
+                            </div>
+                          )}
+                          <span className="font-medium text-gray-800">{u.displayName || '—'}</span>
+                          {isSelf && (
+                            <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">أنت</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-gray-500" dir="ltr">{u.email}</td>
+                      <td className="px-5 py-3">
+                        <span className={clsx(
+                          'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full w-fit',
+                          u.isAdmin
+                            ? 'bg-[#1B3A6B]/10 text-[#1B3A6B]'
+                            : 'bg-gray-100 text-gray-500'
+                        )}>
+                          {u.isAdmin
+                            ? <><Shield className="w-3 h-3" /> مسؤول</>
+                            : 'مستخدم'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        {u.isAdmin ? (
+                          <button
+                            onClick={() => handleRevokeAdmin(u.email!, u.uid)}
+                            disabled={isLoading || isSelf}
+                            title={isSelf ? 'لا يمكنك إلغاء صلاحيتك الخاصة' : ''}
+                            className="flex items-center gap-1.5 text-xs border border-red-200 text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldOff className="w-3 h-3" />}
+                            إلغاء الصلاحية
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleGrantAdmin(u.email!, u.uid)}
+                            disabled={isLoading}
+                            className="flex items-center gap-1.5 text-xs bg-[#1B3A6B]/10 text-[#1B3A6B] hover:bg-[#1B3A6B]/20 px-3 py-1.5 rounded-md transition-colors disabled:opacity-40"
+                          >
+                            {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />}
+                            منح الصلاحية
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )

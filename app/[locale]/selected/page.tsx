@@ -91,7 +91,7 @@ export default function SelectedOffersPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-[#1B3A6B]">عروضي المختارة</h1>
         <p className="text-gray-500 text-sm mt-1">
-          العروض التي اخترتها للتبادل · {offers.length} / 20
+          العروض التي اخترتها للتبديل · {offers.length} / 20
         </p>
       </div>
 
@@ -138,7 +138,7 @@ export default function SelectedOffersPage() {
 
                   {offer.status === 'confirmed' && (
                     <div className="mt-3 p-3 bg-green-50 border border-green-100 rounded-lg">
-                      <p className="text-xs text-green-700 font-medium">✅ تم تأكيد هذا التبادل من قِبل الإدارة</p>
+                      <p className="text-xs text-green-700 font-medium">✅ تم تأكيد هذا التبديل من قِبل الإدارة</p>
                     </div>
                   )}
 

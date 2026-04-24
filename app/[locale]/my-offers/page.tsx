@@ -87,7 +87,7 @@ export default function MyOffersPage() {
         user?.displayName ?? undefined,
         user?.email ?? undefined,
       )
-      toast.success('✅ تم تأكيد التبادل')
+      toast.success('✅ تم تأكيد التبديل')
       if (user) load(user.uid)
     } catch { toast.error('حدث خطأ') }
     finally { setAccepting(null) }
@@ -262,7 +262,7 @@ export default function MyOffersPage() {
               {/* Confirmed badge */}
               {offer.status === 'confirmed' && (
                 <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <p className="text-xs text-green-700 font-semibold">✅ تم تأكيد التبادل مع {offer.selectorName}</p>
+                  <p className="text-xs text-green-700 font-semibold">✅ تم تأكيد التبديل مع {offer.selectorName}</p>
                   {(offer as any).confirmedByName && (
                     <p className="text-xs text-green-600 mt-1">
                       اعتمد بواسطة: {(offer as any).confirmedByName} · {(offer as any).confirmedByEmail}
