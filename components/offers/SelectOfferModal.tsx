@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Offer, ReplacementDay, selectOfferDirect } from '@/lib/firebase/firestore'
+import { Offer, ReplacementDay, selectOfferDirect, getStations, Station } from '@/lib/firebase/firestore'
 import { getCurrentUser, signInWithGoogle, onAuth } from '@/lib/firebase/auth'
 import { X, Loader2, LogIn, CheckCircle, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -18,21 +18,29 @@ const shiftLabel: Record<string, string> = {
 }
 
 export default function SelectOfferModal({ offer, onClose }: Props) {
-  const [user,         setUser]         = useState<User | null>(getCurrentUser())
-  const [loading,      setLoading]      = useState(false)
-  const [done,         setDone]         = useState(false)
-  const [signingIn,    setSigningIn]    = useState(false)
-  const [selectedDay,  setSelectedDay]  = useState<ReplacementDay | null>(
+  const [user,                   setUser]                   = useState<User | null>(getCurrentUser())
+  const [loading,                setLoading]                = useState(false)
+  const [done,                   setDone]                   = useState(false)
+  const [signingIn,              setSigningIn]              = useState(false)
+  const [selectedDay,            setSelectedDay]            = useState<ReplacementDay | null>(
     offer.replacementDays.length === 1 ? offer.replacementDays[0] : null
   )
+  const [stations,               setStations]               = useState<Station[]>([])
+  const [claimerStation,         setClaimerStation]         = useState('')
+  const [claimerEmployeeNumber,  setClaimerEmployeeNumber]  = useState('')
 
   // Keep user in sync (e.g. after sign-in inside modal)
   useEffect(() => {
     return onAuth((u) => setUser(u))
   }, [])
 
+  // Load available stations
+  useEffect(() => {
+    getStations().then(setStations)
+  }, [])
+
   async function handleConfirm() {
-    if (!user || user.isAnonymous || !selectedDay) return
+    if (!user || user.isAnonymous || !selectedDay || !claimerStation) return
     setLoading(true)
     try {
       await selectOfferDirect(
@@ -40,8 +48,10 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
         user.uid,
         user.displayName || '',
         '',   // code — not required from selector
-        '',   // station — removed from user flow
+        '',   // legacy selectorStation — not used in new flow
         selectedDay,
+        claimerStation,
+        claimerEmployeeNumber || undefined,
       )
       setDone(true)
       toast.success('تم اختيار العرض بنجاح ✅')
@@ -59,6 +69,8 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
       if (e?.code !== 'auth/popup-closed-by-user') toast.error('فشل تسجيل الدخول')
     } finally { setSigningIn(false) }
   }
+
+  const canConfirm = !!selectedDay && !!claimerStation
 
   return (
     <div
@@ -208,6 +220,45 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                     )}
                   </div>
 
+                  {/* Station / Location — required */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                      المحطة / الموقع <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={claimerStation}
+                      onChange={(e) => setClaimerStation(e.target.value)}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB]"
+                    >
+                      <option value="">اختر المحطة</option>
+                      {stations.map((s) => (
+                        <option key={s.id} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                    {!claimerStation && (
+                      <p className="text-xs text-red-500 mt-1">المحطة مطلوبة</p>
+                    )}
+                  </div>
+
+                  {/* Employee Number — optional */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                      الرقم الوظيفي <span className="text-gray-400 font-normal">(اختياري)</span>
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={claimerEmployeeNumber}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 7)
+                        setClaimerEmployeeNumber(val)
+                      }}
+                      placeholder="أدخل الرقم الوظيفي"
+                      maxLength={7}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB] placeholder:text-gray-400"
+                    />
+                  </div>
+
                   {/* Notice */}
                   <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
                     <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -230,7 +281,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                     <button
                       type="button"
                       onClick={handleConfirm}
-                      disabled={loading || !selectedDay}
+                      disabled={loading || !canConfirm}
                       className="flex-1 bg-[#1B3A6B] text-white py-3 rounded-xl text-sm font-semibold hover:bg-[#142D52] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-h-[48px]"
                     >
                       {loading
