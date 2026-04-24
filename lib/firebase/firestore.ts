@@ -35,6 +35,7 @@ export interface Offer {
   selectorName?: string
   selectorCode?: string
   selectorStation?: string
+  claimerName?: string
   claimerStation?: string
   claimerEmployeeNumber?: string
   confirmedByName?: string
@@ -373,6 +374,7 @@ export async function selectOfferDirect(
   selectedReplacementDay: ReplacementDay,
   claimerStation?: string,
   claimerEmployeeNumber?: string,
+  claimerName?: string,
 ): Promise<void> {
   await updateDoc(doc(db, 'offers', offerId), {
     status: 'selected',
@@ -381,6 +383,7 @@ export async function selectOfferDirect(
     selectorCode,
     selectorStation,
     selectedReplacementDay,
+    ...(claimerName           ? { claimerName }           : {}),
     ...(claimerStation        ? { claimerStation }        : {}),
     ...(claimerEmployeeNumber ? { claimerEmployeeNumber } : {}),
     updatedAt: serverTimestamp(),
@@ -395,6 +398,7 @@ export async function cancelSelectionDirect(offerId: string): Promise<void> {
     selectorName:            deleteField(),
     selectorCode:            deleteField(),
     selectorStation:         deleteField(),
+    claimerName:             deleteField(),
     claimerStation:          deleteField(),
     claimerEmployeeNumber:   deleteField(),
     selectedReplacementDay:  deleteField(),
