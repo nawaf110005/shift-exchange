@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Offer, ReplacementDay, selectOfferDirect, getStations, Station } from '@/lib/firebase/firestore'
 import { getCurrentUser, onAuth } from '@/lib/firebase/auth'
 import { X, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
@@ -17,12 +17,67 @@ const shiftLabel: Record<string, string> = {
   day: 'صباحي', night: 'مسائي', overlap: 'تداخل',
 }
 
+/** Return the YYYY-MM-DD string for the calendar day after dateStr */
+function nextCalendarDay(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dt = new Date(y, m - 1, d + 1)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Merge consecutive night-shift replacement days that represent the same
+ * overnight shift (e.g. "2025-04-23 night" + "2025-04-24 night" → one entry
+ * keeping the first date).  Any other combination is left unchanged.
+ */
+function mergeNightShifts(days: ReplacementDay[]): ReplacementDay[] {
+  const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date))
+  const result: ReplacementDay[] = []
+  const skip = new Set<number>()
+
+  for (let i = 0; i < sorted.length; i++) {
+    if (skip.has(i)) continue
+    const cur = sorted[i]
+
+    if (cur.shifts.includes('night') && i + 1 < sorted.length) {
+      const nxt = sorted[i + 1]
+      if (!skip.has(i + 1) && nxt.shifts.includes('night') && nxt.date === nextCalendarDay(cur.date)) {
+        // Same overnight shift — keep first date entry, discard the next-day duplicate
+        result.push(cur)
+        skip.add(i + 1)
+        continue
+      }
+    }
+
+    result.push(cur)
+  }
+
+  return result
+}
+
+/** Format YYYY-MM-DD → Arabic day + month (e.g. "٢٣ أبريل") */
+function formatArabicDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('ar-SA', { day: 'numeric', month: 'long' })
+}
+
+/** Human-readable Arabic label for a replacement day */
+function dayDisplayLabel(r: ReplacementDay): string {
+  const dateStr = formatArabicDate(r.date)
+  // Pure night-only entries get a "ليلة" prefix to make the overnight nature clear
+  if (r.shifts.length === 1 && r.shifts[0] === 'night') return `ليلة ${dateStr}`
+  return dateStr
+}
+
 export default function SelectOfferModal({ offer, onClose }: Props) {
+  // Deduplicated display list — consecutive night entries for the same overnight shift
+  // are collapsed into a single selectable option.
+  const displayDays = useMemo(() => mergeNightShifts(offer.replacementDays), [offer.replacementDays])
+
   const [user,                   setUser]                   = useState<User | null>(getCurrentUser())
   const [loading,                setLoading]                = useState(false)
   const [done,                   setDone]                   = useState(false)
   const [selectedDay,            setSelectedDay]            = useState<ReplacementDay | null>(
-    offer.replacementDays.length === 1 ? offer.replacementDays[0] : null
+    displayDays.length === 1 ? displayDays[0] : null
   )
   const [stations,               setStations]               = useState<Station[]>([])
   const [claimerName,            setClaimerName]            = useState(getCurrentUser()?.displayName || '')
@@ -149,7 +204,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                   اختر <span className="font-semibold text-[#1B3A6B]">يومًا بديلًا واحدًا</span> من الأيام التي يعرضها صاحب العرض
                 </p>
                 <div className="flex flex-col gap-2">
-                  {offer.replacementDays.map((r, i) => {
+                  {displayDays.map((r, i) => {
                     const isSelected = selectedDay?.date === r.date
                     return (
                       <button
@@ -170,7 +225,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                         )}>
                           {isSelected && <span className="w-2 h-2 rounded-full bg-green-500 block" />}
                         </span>
-                        <span className="flex-1">{r.date}</span>
+                        <span className="flex-1">{dayDisplayLabel(r)}</span>
                         <span className={clsx(
                           'text-xs px-2 py-0.5 rounded-full border',
                           isSelected
