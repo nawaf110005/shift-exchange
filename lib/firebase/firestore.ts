@@ -30,6 +30,7 @@ export interface Offer {
   offerMonth: string      // YYYY-MM
   daysOff: DayOff[]
   replacementDays: ReplacementDay[]
+  selectedReplacementDay?: ReplacementDay  // the one day the claimer chose
   selectorUid?: string
   selectorName?: string
   selectorCode?: string
@@ -367,6 +368,7 @@ export async function selectOfferDirect(
   selectorName: string,
   selectorCode: string,
   selectorStation: string,
+  selectedReplacementDay: ReplacementDay,
 ): Promise<void> {
   await updateDoc(doc(db, 'offers', offerId), {
     status: 'selected',
@@ -374,6 +376,7 @@ export async function selectOfferDirect(
     selectorName,
     selectorCode,
     selectorStation,
+    selectedReplacementDay,
     updatedAt: serverTimestamp(),
   })
 }
@@ -381,12 +384,13 @@ export async function selectOfferDirect(
 /** Selector cancels their own selection directly via Firestore */
 export async function cancelSelectionDirect(offerId: string): Promise<void> {
   await updateDoc(doc(db, 'offers', offerId), {
-    status:          'in_progress',
-    selectorUid:     deleteField(),
-    selectorName:    deleteField(),
-    selectorCode:    deleteField(),
-    selectorStation: deleteField(),
-    updatedAt:       serverTimestamp(),
+    status:                  'in_progress',
+    selectorUid:             deleteField(),
+    selectorName:            deleteField(),
+    selectorCode:            deleteField(),
+    selectorStation:         deleteField(),
+    selectedReplacementDay:  deleteField(),
+    updatedAt:               serverTimestamp(),
   })
 }
 
@@ -408,11 +412,12 @@ export async function ownerAcceptOffer(
 /** Owner rejects selector's choice → back to in_progress */
 export async function ownerRejectOffer(offerId: string): Promise<void> {
   await updateDoc(doc(db, 'offers', offerId), {
-    status:          'in_progress',
-    selectorUid:     deleteField(),
-    selectorName:    deleteField(),
-    selectorCode:    deleteField(),
-    selectorStation: deleteField(),
-    updatedAt:       serverTimestamp(),
+    status:                  'in_progress',
+    selectorUid:             deleteField(),
+    selectorName:            deleteField(),
+    selectorCode:            deleteField(),
+    selectorStation:         deleteField(),
+    selectedReplacementDay:  deleteField(),
+    updatedAt:               serverTimestamp(),
   })
 }

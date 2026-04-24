@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Offer, selectOfferDirect } from '@/lib/firebase/firestore'
+import { Offer, ReplacementDay, selectOfferDirect } from '@/lib/firebase/firestore'
 import { getCurrentUser, signInWithGoogle, onAuth } from '@/lib/firebase/auth'
 import { X, Loader2, LogIn, CheckCircle, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -18,10 +18,13 @@ const shiftLabel: Record<string, string> = {
 }
 
 export default function SelectOfferModal({ offer, onClose }: Props) {
-  const [user,      setUser]      = useState<User | null>(getCurrentUser())
-  const [loading,   setLoading]   = useState(false)
-  const [done,      setDone]      = useState(false)
-  const [signingIn, setSigningIn] = useState(false)
+  const [user,         setUser]         = useState<User | null>(getCurrentUser())
+  const [loading,      setLoading]      = useState(false)
+  const [done,         setDone]         = useState(false)
+  const [signingIn,    setSigningIn]    = useState(false)
+  const [selectedDay,  setSelectedDay]  = useState<ReplacementDay | null>(
+    offer.replacementDays.length === 1 ? offer.replacementDays[0] : null
+  )
 
   // Keep user in sync (e.g. after sign-in inside modal)
   useEffect(() => {
@@ -29,7 +32,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
   }, [])
 
   async function handleConfirm() {
-    if (!user || user.isAnonymous) return
+    if (!user || user.isAnonymous || !selectedDay) return
     setLoading(true)
     try {
       await selectOfferDirect(
@@ -38,6 +41,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
         user.displayName || '',
         '',   // code — not required from selector
         '',   // station — removed from user flow
+        selectedDay,
       )
       setDone(true)
       toast.success('تم اختيار العرض بنجاح ✅')
@@ -159,16 +163,49 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                     </div>
                   </div>
 
-                  {/* Replacement days offered by the other party */}
+                  {/* Replacement day picker — claimer must choose exactly one */}
                   <div>
-                    <p className="text-xs text-gray-400 mb-1.5">الأيام البديلة التي يعرضها صاحب العرض</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {offer.replacementDays.map((r, i) => (
-                        <span key={i} className="text-xs bg-green-50 text-green-700 border border-green-100 px-2 py-0.5 rounded-full">
-                          {r.date} · {r.shifts.map(s => shiftLabel[s] ?? s).join(' / ')}
-                        </span>
-                      ))}
+                    <p className="text-xs text-gray-500 mb-2">
+                      اختر <span className="font-semibold text-[#1B3A6B]">يومًا بديلًا واحدًا</span> من الأيام التي يعرضها صاحب العرض
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {offer.replacementDays.map((r, i) => {
+                        const isSelected = selectedDay?.date === r.date
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setSelectedDay(r)}
+                            className={clsx(
+                              'flex items-center gap-3 w-full text-right px-4 py-3 rounded-xl border text-sm transition-colors',
+                              isSelected
+                                ? 'bg-green-50 border-green-400 text-green-800 font-semibold'
+                                : 'bg-white border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50/50'
+                            )}
+                          >
+                            {/* Radio indicator */}
+                            <span className={clsx(
+                              'flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center',
+                              isSelected ? 'border-green-500' : 'border-gray-300'
+                            )}>
+                              {isSelected && <span className="w-2 h-2 rounded-full bg-green-500 block" />}
+                            </span>
+                            <span className="flex-1">{r.date}</span>
+                            <span className={clsx(
+                              'text-xs px-2 py-0.5 rounded-full border',
+                              isSelected
+                                ? 'bg-green-100 text-green-700 border-green-200'
+                                : 'bg-gray-100 text-gray-500 border-gray-200'
+                            )}>
+                              {r.shifts.map(s => shiftLabel[s] ?? s).join(' / ')}
+                            </span>
+                          </button>
+                        )
+                      })}
                     </div>
+                    {!selectedDay && (
+                      <p className="text-xs text-red-500 mt-1.5">يرجى اختيار يوم للمتابعة</p>
+                    )}
                   </div>
 
                   {/* Notice */}
@@ -193,7 +230,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                     <button
                       type="button"
                       onClick={handleConfirm}
-                      disabled={loading}
+                      disabled={loading || !selectedDay}
                       className="flex-1 bg-[#1B3A6B] text-white py-3 rounded-xl text-sm font-semibold hover:bg-[#142D52] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-h-[48px]"
                     >
                       {loading
