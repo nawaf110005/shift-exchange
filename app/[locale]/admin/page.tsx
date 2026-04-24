@@ -16,7 +16,7 @@ import { exportOffersToExcel } from '@/lib/utils/exportExcel'
 import {
   ShieldCheck, LogOut, Download, Trash2, CheckCircle, Loader2, Plus,
   Pencil, Check, X, Eye, EyeOff, Search, Shield, ShieldOff, RefreshCw,
-  XCircle, Lock,
+  XCircle,
 } from 'lucide-react'
 import { User } from 'firebase/auth'
 import toast from 'react-hot-toast'
@@ -41,7 +41,6 @@ export default function AdminPage() {
   // Confirm dialog — only shown when no valid name is saved in localStorage
   const [confirmModal,      setConfirmModal]      = useState<{ offerId: string } | null>(null)
   const [confirmNameInput,  setConfirmNameInput]  = useState('')
-  const [savedAdminName,    setSavedAdminName]    = useState('')
 
   // Filters — default: current month, action-needed statuses (selected + confirmed)
   const [filterStatus,  setFilterStatus]  = useState<OfferStatus | ''>('')
@@ -54,7 +53,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = (localStorage.getItem('admin_confirm_name') || '').trim()
-      if (saved.length >= 3) setSavedAdminName(saved)
+      if (saved) setConfirmNameInput(saved)
     }
   }, [])
 
@@ -364,43 +363,31 @@ export default function AdminPage() {
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">اسم المؤكد</label>
-          {savedAdminName ? (
-            <div className="flex items-center gap-2 border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm min-w-[160px]">
-              <Lock className="w-3 h-3 text-gray-400 shrink-0" />
-              <span className="text-gray-700">{savedAdminName}</span>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={confirmNameInput}
-                onChange={e => setConfirmNameInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && confirmNameInput.trim().length >= 3) {
-                    const name = confirmNameInput.trim()
-                    localStorage.setItem('admin_confirm_name', name)
-                    setSavedAdminName(name)
-                    setConfirmNameInput('')
-                  }
-                }}
-                placeholder="اسمك كمؤكد"
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB] w-36"
-              />
-              <button
-                onClick={() => {
-                  const name = confirmNameInput.trim()
-                  if (name.length < 3) return
-                  localStorage.setItem('admin_confirm_name', name)
-                  setSavedAdminName(name)
-                  setConfirmNameInput('')
-                }}
-                disabled={confirmNameInput.trim().length < 3}
-                className="bg-[#1B3A6B] text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-[#142D52] disabled:opacity-40 transition-colors"
-              >
-                حفظ
-              </button>
-            </div>
-          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={confirmNameInput}
+              onChange={e => setConfirmNameInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && confirmNameInput.trim().length >= 3) {
+                  localStorage.setItem('admin_confirm_name', confirmNameInput.trim())
+                }
+              }}
+              placeholder="اسمك كمؤكد"
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB] w-36"
+            />
+            <button
+              onClick={() => {
+                const name = confirmNameInput.trim()
+                if (name.length < 3) return
+                localStorage.setItem('admin_confirm_name', name)
+              }}
+              disabled={confirmNameInput.trim().length < 3}
+              className="bg-[#1B3A6B] text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-[#142D52] disabled:opacity-40 transition-colors"
+            >
+              حفظ
+            </button>
+          </div>
         </div>
         <button onClick={loadOffers}
           className="bg-[#1B3A6B] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#142D52] transition-colors">
@@ -846,7 +833,6 @@ export default function AdminPage() {
                 if (e.key === 'Enter' && confirmNameInput.trim().length >= 3) {
                   const name = confirmNameInput.trim()
                   localStorage.setItem('admin_confirm_name', name)
-                  setSavedAdminName(name)
                   const { offerId } = confirmModal
                   setConfirmModal(null)
                   handleStatusChange(offerId, 'confirmed', name)
@@ -871,7 +857,6 @@ export default function AdminPage() {
                   const name = confirmNameInput.trim()
                   if (name.length < 3) return
                   localStorage.setItem('admin_confirm_name', name)
-                  setSavedAdminName(name)
                   const { offerId } = confirmModal
                   setConfirmModal(null)
                   handleStatusChange(offerId, 'confirmed', name)
