@@ -69,7 +69,7 @@ export default function OfferCalendar({ offers, myUid, onSelectOffer }: Props) {
       {/* Legend */}
       <div className="flex items-center gap-4 mt-4 pt-4 border-t text-xs text-gray-600">
         <span className="font-medium">نوع الدوام:</span>
-        {Object.entries({ day: 'صباحي', night: 'مسائي', overlap: 'تداخل' }).map(([key, label]) => (
+        {Object.entries({ day: 'صباحي', night: 'مسائي', overlap: 'أوفرلاب' }).map(([key, label]) => (
           <div key={key} className="flex items-center gap-1">
             <span className="w-3 h-3 rounded-full inline-block" style={{ background: SHIFT_COLORS[key] }} />
             {label}

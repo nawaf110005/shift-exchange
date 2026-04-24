@@ -38,6 +38,9 @@ export default function AdminPage() {
   const [userSearch,     setUserSearch]     = useState('')
   const [adminLoading,   setAdminLoading]   = useState<Record<string, boolean>>({})
   const [usersLoading,   setUsersLoading]   = useState(false)
+  // Confirm dialog — only shown when no valid name is saved in localStorage
+  const [confirmModal,      setConfirmModal]      = useState<{ offerId: string } | null>(null)
+  const [confirmNameInput,  setConfirmNameInput]  = useState('')
 
   // Filters — default: current month, action-needed statuses (selected + confirmed)
   const [filterStatus,  setFilterStatus]  = useState<OfferStatus | ''>('')
@@ -103,7 +106,7 @@ export default function AdminPage() {
     }
   }
 
-  async function handleStatusChange(offerId: string, newStatus: OfferStatus) {
+  async function handleStatusChange(offerId: string, newStatus: OfferStatus, adminNameOverride?: string) {
     if (newStatus === 'confirmed') {
       setConfirming(prev => ({ ...prev, [offerId]: true }))
     }
@@ -111,7 +114,7 @@ export default function AdminPage() {
       if (newStatus === 'confirmed') {
         await ownerAcceptOffer(
           offerId,
-          user?.displayName ?? undefined,
+          adminNameOverride ?? user?.displayName ?? undefined,
           user?.email ?? undefined,
         )
       } else {
@@ -382,12 +385,15 @@ export default function AdminPage() {
                   <td className="px-4 py-3 text-xs text-gray-500">
                     <div>{offer.replacementDays.length} يوم</div>
                     {offer.selectedReplacementDay && (
-                      <div className="mt-1 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5 text-[10px] text-blue-700 font-medium whitespace-nowrap">
+                      <div className="mt-1 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5 text-[10px] text-blue-700 font-medium">
                         ✔ {offer.selectedReplacementDay.date}
                         {offer.selectedReplacementDay.shifts?.length > 0 && (
                           <span className="mr-1 font-normal">
                             · {offer.selectedReplacementDay.shifts.map(s => ({day:'ص',night:'م',overlap:'ت'} as Record<string,string>)[s] ?? s).join('/')}
                           </span>
+                        )}
+                        {offer.ownerStation && (
+                          <span className="block font-normal text-blue-600 mt-0.5">{offer.ownerStation}</span>
                         )}
                       </div>
                     )}
@@ -416,7 +422,15 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       {offer.status === 'selected' && (
                         <button
-                          onClick={() => handleStatusChange(offer.id!, 'confirmed')}
+                          onClick={() => {
+                            const saved = typeof window !== 'undefined' ? (localStorage.getItem('admin_confirm_name') || '').trim() : ''
+                            if (saved.length >= 3) {
+                              handleStatusChange(offer.id!, 'confirmed', saved)
+                            } else {
+                              setConfirmNameInput('')
+                              setConfirmModal({ offerId: offer.id! })
+                            }
+                          }}
                           disabled={!!confirming[offer.id!]}
                           className="flex items-center gap-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded-md transition-colors disabled:opacity-50">
                           {confirming[offer.id!]
@@ -720,6 +734,60 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {/* ── Confirm-name dialog ─────────────────────────────────────────── */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h3 className="text-lg font-bold text-[#1B3A6B]">تأكيد التبديل</h3>
+            <p className="text-sm text-gray-500">
+              أدخل اسمك — سيُحفظ تلقائياً للمرات القادمة
+            </p>
+            <input
+              type="text"
+              value={confirmNameInput}
+              onChange={e => setConfirmNameInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && confirmNameInput.trim().length >= 3) {
+                  const name = confirmNameInput.trim()
+                  localStorage.setItem('admin_confirm_name', name)
+                  const { offerId } = confirmModal
+                  setConfirmModal(null)
+                  handleStatusChange(offerId, 'confirmed', name)
+                }
+              }}
+              placeholder="الاسم الكامل (٣ أحرف على الأقل)"
+              autoFocus
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB]"
+            />
+            {confirmNameInput.trim().length > 0 && confirmNameInput.trim().length < 3 && (
+              <p className="text-xs text-red-500 -mt-2">يجب أن يكون الاسم ٣ أحرف على الأقل</p>
+            )}
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={() => {
+                  const name = confirmNameInput.trim()
+                  if (name.length < 3) return
+                  localStorage.setItem('admin_confirm_name', name)
+                  const { offerId } = confirmModal
+                  setConfirmModal(null)
+                  handleStatusChange(offerId, 'confirmed', name)
+                }}
+                disabled={confirmNameInput.trim().length < 3}
+                className="flex-1 bg-green-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
+              >
+                تأكيد
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

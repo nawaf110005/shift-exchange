@@ -16,7 +16,7 @@ import clsx from 'clsx'
 const SHIFTS: { value: ShiftType; label: string }[] = [
   { value: 'day',     label: 'صباحي'  },
   { value: 'night',   label: 'مسائي'  },
-  { value: 'overlap', label: 'تداخل'  },
+  { value: 'overlap', label: 'أوفرلاب'  },
 ]
 
 interface MatchResult {
@@ -39,7 +39,7 @@ function scoreColor(score: number) {
 }
 
 // ─── Shift label map ──────────────────────────────────────────────────────────
-const shiftLabel: Record<string, string> = { day: 'صباحي', night: 'مسائي', overlap: 'تداخل' }
+const shiftLabel: Record<string, string> = { day: 'صباحي', night: 'مسائي', overlap: 'أوفرلاب' }
 
 export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
   const isEdit = !!offer

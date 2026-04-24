@@ -58,7 +58,7 @@ export default function SelectedOffersPage() {
   }
 
   const shiftLabel: Record<string, string> = {
-    day: 'صباحي', night: 'مسائي', overlap: 'تداخل',
+    day: 'صباحي', night: 'مسائي', overlap: 'أوفرلاب',
   }
 
   if (user === undefined) {
@@ -139,7 +139,7 @@ export default function SelectedOffersPage() {
                   {/* Agreed replacement day */}
                   {offer.selectedReplacementDay && (
                     <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">الوردية المتفق عليها</p>
+                      <p className="text-xs text-gray-500 mb-1">المناوبة المتفق عليها</p>
                       <p className="text-sm font-semibold text-[#1B3A6B]">
                         {offer.selectedReplacementDay.date}
                         {offer.selectedReplacementDay.shifts?.length > 0 && (
@@ -148,6 +148,9 @@ export default function SelectedOffersPage() {
                           </span>
                         )}
                       </p>
+                      {offer.ownerStation && (
+                        <p className="text-xs text-[#2E86AB] font-medium mt-0.5">{offer.ownerStation}</p>
+                      )}
                     </div>
                   )}
 

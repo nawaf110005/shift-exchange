@@ -14,7 +14,7 @@ interface Props {
 }
 
 const shiftLabel: Record<string, string> = {
-  day: 'صباحي', night: 'مسائي', overlap: 'تداخل',
+  day: 'صباحي', night: 'مسائي', overlap: 'أوفرلاب',
 }
 
 /** Return the YYYY-MM-DD string for the calendar day after dateStr */
@@ -146,16 +146,15 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
       onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
     >
       <div
-        className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl shadow-2xl"
-        style={{ paddingBottom: 'max(1.25rem, var(--safe-bottom))' }}
+        className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl shadow-2xl flex flex-col max-h-[90vh]"
       >
         {/* Drag handle (mobile) */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+        <div className="flex justify-center pt-3 pb-1 sm:hidden flex-shrink-0">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b">
+        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
           <h2 className="text-lg font-bold text-[#1B3A6B]">
             {done ? 'تم الاختيار!' : 'تأكيد اختيار العرض'}
           </h2>
@@ -169,7 +168,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
         </div>
 
         {/* Offer summary */}
-        <div className="px-5 py-3 bg-blue-50 border-b">
+        <div className="px-5 py-3 bg-blue-50 border-b flex-shrink-0">
           <p className="text-sm text-gray-600 mb-1">
             عرض <span className="font-semibold text-[#1B3A6B]">{offer.ownerName}</span>
             {' '} — <span className="text-[#2E86AB]">{offer.ownerStation}</span>
@@ -183,7 +182,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
           </div>
         </div>
 
-        <div className="px-5 py-6">
+        <div className="flex-1 overflow-y-auto min-h-0 px-5 py-6">
 
           {done ? (
             /* ── Success state ─────────────────────────────────────── */
@@ -216,9 +215,10 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
               {/* Replacement day picker — claimer must choose exactly ONE date+shift combination */}
               <div>
                 <p className="text-xs text-gray-500 mb-2">
-                  اختر <span className="font-semibold text-[#1B3A6B]">وردية بديلة واحدة</span> من الخيارات التي يعرضها صاحب العرض
+                  اختر <span className="font-semibold text-[#1B3A6B]">مناوبة بديلة واحدة</span> من الخيارات التي يعرضها صاحب العرض
                 </p>
-                <div className="flex flex-col gap-2">
+                {/* Scrollable list — only this section scrolls */}
+                <div className="max-h-48 overflow-y-auto flex flex-col gap-1 rounded-xl border border-gray-200 p-1">
                   {shiftOptions.map((opt, i) => {
                     const isSelected = selectedDay?.date === opt.date && selectedDay?.shift === opt.shift
                     return (
@@ -227,7 +227,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                         type="button"
                         onClick={() => setSelectedDay(opt)}
                         className={clsx(
-                          'flex items-center gap-3 w-full text-right px-4 py-3 rounded-xl border text-sm transition-colors',
+                          'flex items-center gap-2 w-full text-right px-3 py-1.5 rounded-lg border text-sm transition-colors',
                           isSelected
                             ? 'bg-green-50 border-green-400 text-green-800 font-semibold'
                             : 'bg-white border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50/50'
@@ -235,14 +235,14 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                       >
                         {/* Radio indicator */}
                         <span className={clsx(
-                          'flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center',
+                          'flex-shrink-0 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center',
                           isSelected ? 'border-green-500' : 'border-gray-300'
                         )}>
-                          {isSelected && <span className="w-2 h-2 rounded-full bg-green-500 block" />}
+                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-green-500 block" />}
                         </span>
                         <span className="flex-1">{shiftOptionDateLabel(opt)}</span>
                         <span className={clsx(
-                          'text-xs px-2 py-0.5 rounded-full border',
+                          'text-xs px-1.5 py-0.5 rounded-full border',
                           isSelected
                             ? 'bg-green-100 text-green-700 border-green-200'
                             : 'bg-gray-100 text-gray-500 border-gray-200'
@@ -254,7 +254,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                   })}
                 </div>
                 {!selectedDay && (
-                  <p className="text-xs text-red-500 mt-1.5">يرجى اختيار وردية للمتابعة</p>
+                  <p className="text-xs text-red-500 mt-1.5">يرجى اختيار مناوبة للمتابعة</p>
                 )}
               </div>
 
@@ -306,28 +306,36 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                 </p>
               </div>
 
-              {/* Action buttons */}
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={loading}
-                  className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 min-h-[48px]"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirm}
-                  disabled={loading || !canConfirm}
-                  className="flex-1 bg-[#1B3A6B] text-white py-3 rounded-xl text-sm font-semibold hover:bg-[#142D52] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-h-[48px]"
-                >
-                  {loading
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : <CheckCircle className="w-4 h-4" />}
-                  تأكيد الاختيار
-                </button>
-              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sticky footer — confirm/cancel buttons */}
+        <div
+          className="flex-shrink-0 px-5 pt-3 bg-white border-t border-gray-100"
+          style={{ paddingBottom: 'max(1.25rem, var(--safe-bottom))' }}
+        >
+          {!done && (
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 min-h-[48px]"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={loading || !canConfirm}
+                className="flex-1 bg-[#1B3A6B] text-white py-3 rounded-xl text-sm font-semibold hover:bg-[#142D52] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-h-[48px]"
+              >
+                {loading
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <CheckCircle className="w-4 h-4" />}
+                تأكيد الاختيار
+              </button>
             </div>
           )}
         </div>

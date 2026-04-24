@@ -226,7 +226,7 @@ export default function MyOffersPage() {
                 <div className="flex flex-wrap gap-1">
                   {offer.daysOff.map((d, i) => (
                     <span key={i} className="text-xs bg-red-50 text-red-700 border border-red-100 px-2 py-1 rounded-full">
-                      {d.date} · {({ day:'صباحي', night:'مسائي', overlap:'تداخل' } as Record<string,string>)[d.shift]}
+                      {d.date} · {({ day:'صباحي', night:'مسائي', overlap:'أوفرلاب' } as Record<string,string>)[d.shift]}
                     </span>
                   ))}
                 </div>
@@ -238,7 +238,7 @@ export default function MyOffersPage() {
                   const otherName    = offer.claimerName    || offer.selectorName
                   const otherStation = offer.claimerStation || offer.selectorStation
                   const repDay       = offer.selectedReplacementDay
-                  const shiftLabel   = ({ day: 'صباحي', night: 'مسائي', overlap: 'تداخل' } as Record<string, string>)
+                  const shiftLabel   = ({ day: 'صباحي', night: 'مسائي', overlap: 'أوفرلاب' } as Record<string, string>)
                   if (!otherName && !otherStation && !repDay) return null
                   return (
                     <div className={clsx(
@@ -266,6 +266,11 @@ export default function MyOffersPage() {
                             {repDay.shifts?.length > 0 && (
                               <span className="block text-[10px] font-normal text-gray-500">
                                 {repDay.shifts.map(s => shiftLabel[s] ?? s).join(' · ')}
+                              </span>
+                            )}
+                            {offer.ownerStation && (
+                              <span className="block text-[10px] font-normal text-[#2E86AB]">
+                                {offer.ownerStation}
                               </span>
                             )}
                           </span>

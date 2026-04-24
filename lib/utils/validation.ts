@@ -66,7 +66,7 @@ export function shiftLabel(shift: string): string {
   const labels: Record<string, string> = {
     day:     'صباحي',
     night:   'مسائي',
-    overlap: 'تداخل',
+    overlap: 'أوفرلاب',
   }
   return labels[shift] || shift
 }
