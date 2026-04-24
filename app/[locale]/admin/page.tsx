@@ -415,8 +415,8 @@ export default function AdminPage() {
                     <td className="px-5 py-3">
                       {editingStation?.id === s.id ? (
                         <input
-                          value={editingStation.name}
-                          onChange={e => setEditingStation({ ...editingStation, name: e.target.value })}
+                          value={editingStation!.name}
+                          onChange={e => setEditingStation({ ...editingStation!, name: e.target.value })}
                           onKeyDown={e => { if (e.key === 'Enter') handleSaveStation(); if (e.key === 'Escape') setEditingStation(null) }}
                           autoFocus
                           className="border border-[#2E86AB] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB] w-full max-w-xs"
