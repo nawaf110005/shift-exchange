@@ -36,7 +36,10 @@ export function exportOffersToExcel(offers: Offer[], filename = 'تقرير_تب
     'يوم الطلب':               formatDaysOffFull(o.daysOff),
     'البديل':                  o.claimerName || o.selectorName || '',
     'رقم الموظف (البديل)':     o.claimerEmployeeNumber || o.selectorCode || '',
+    'مركز البديل':             o.claimerStation || o.selectorStation || '',
     'يوم التبديل':             formatReplacementDayFull(o.selectedReplacementDay),
+    'اسم الأدمن المؤكد':       o.confirmedByName || '',
+    'إيميل الأدمن المؤكد':     o.confirmedByEmail || '',
   }))
 
   const ws = XLSX.utils.json_to_sheet(rows)
@@ -48,7 +51,10 @@ export function exportOffersToExcel(offers: Offer[], filename = 'تقرير_تب
     { wch: 32 }, // يوم الطلب
     { wch: 22 }, // البديل
     { wch: 18 }, // رقم الموظف (البديل)
+    { wch: 18 }, // مركز البديل
     { wch: 32 }, // يوم التبديل
+    { wch: 24 }, // اسم الأدمن المؤكد
+    { wch: 30 }, // إيميل الأدمن المؤكد
   ]
 
   const wb = XLSX.utils.book_new()
