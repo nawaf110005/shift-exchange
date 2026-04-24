@@ -197,16 +197,13 @@ export default function MyOffersPage() {
             return (
               <div key={offer.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
-                {/* ✓ Admin-confirmed banner */}
-                {offer.status === 'confirmed' && (
-                  <div className="bg-green-500 text-white text-center text-xs font-bold py-2 flex items-center justify-center gap-1.5 tracking-wide">
-                    <span>✓</span><span>مؤكد من الإدارة</span>
+                {/* ── Header row ─────────────────────────────────── */}
+                <div className="flex items-center justify-between px-4 pt-4 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-gray-400 font-medium bg-gray-100 px-1.5 py-0.5 rounded">أنا</span>
+                    <span className="text-sm font-bold text-gray-800">{offer.ownerName || user?.displayName || '—'}</span>
                   </div>
-                )}
-
-                <div className="p-4">
-                  {/* Top row: status badge + action buttons */}
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
                     <span className={clsx('text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap', statusColor(offer.status))}>
                       {statusLabel(offer.status)}
                     </span>
@@ -214,14 +211,14 @@ export default function MyOffersPage() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => { setEditing(offer); setShowForm(true) }}
-                          className="p-2.5 text-gray-400 active:text-[#2E86AB] active:bg-blue-50 rounded-xl transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
+                          className="p-2 text-gray-400 active:text-[#2E86AB] active:bg-blue-50 rounded-xl transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(offer)}
                           disabled={deleting === offer.id}
-                          className="p-2.5 text-gray-400 active:text-red-500 active:bg-red-50 rounded-xl transition-colors disabled:opacity-50 min-w-[40px] min-h-[40px] flex items-center justify-center"
+                          className="p-2 text-gray-400 active:text-red-500 active:bg-red-50 rounded-xl transition-colors disabled:opacity-50 min-w-[36px] min-h-[36px] flex items-center justify-center"
                         >
                           {deleting === offer.id
                             ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -230,108 +227,109 @@ export default function MyOffersPage() {
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {/* ─── Section 1: عرضي ─────────────────────────────── */}
-                  <p className="text-xs font-bold text-[#1B3A6B] mb-3">عرضي</p>
+                <div className="px-4 pb-4">
+                  {/* ── My side: red accent ─────────────────────── */}
+                  <div className="bg-red-50 border border-red-100 rounded-xl p-3">
 
-                  {/* أيام الطلب */}
-                  <div className="mb-3">
-                    <p className="text-[11px] text-gray-400 mb-1.5">أيام الطلب</p>
-                    <div className="flex flex-wrap gap-1.5">
+                    {/* يوم الطلب */}
+                    <p className="text-[11px] font-bold text-red-500 mb-1.5">يوم الطلب</p>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
                       {offer.daysOff.map((d, i) => (
-                        <span key={i} className="text-xs bg-red-50 text-red-700 border border-red-100 px-2.5 py-1 rounded-full">
+                        <span key={i} className="text-xs bg-red-500 text-white px-2.5 py-1 rounded-full font-semibold">
                           {d.date} · {shiftLabel[d.shift] ?? d.shift}
                         </span>
                       ))}
                     </div>
-                  </div>
 
-                  {/* مركزي */}
-                  <div className="mb-3">
-                    <p className="text-[11px] text-gray-400 mb-1">مركزي</p>
-                    <p className="text-sm font-semibold text-gray-800">{offer.ownerStation}</p>
-                  </div>
-
-                  {/* أيام البديل */}
-                  <div>
-                    <p className="text-[11px] text-gray-400 mb-1.5">أيام البديل</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {offer.replacementDays.map((r, i) => (
-                        <span key={i} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-1 rounded-full">
-                          {r.date}{r.shifts?.length > 0 ? ` · ${r.shifts.map(s => shiftLabel[s] ?? s).join('/')}` : ''}
-                        </span>
-                      ))}
+                    {/* أيام البديل */}
+                    <p className="text-[11px] font-bold text-blue-500 mb-1.5">أيام البديل</p>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {offer.replacementDays.map((r, i) => {
+                        const isAgreed = isClaimed && repDay && r.date === repDay.date
+                        return isAgreed ? (
+                          <span key={i} className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-full font-semibold flex items-center gap-1">
+                            <span>✓</span>
+                            <span>{r.date}{r.shifts?.length > 0 ? ` · ${r.shifts.map(s => shiftLabel[s] ?? s).join('/')}` : ''}</span>
+                          </span>
+                        ) : (
+                          <span key={i} className={clsx('text-xs px-2.5 py-1 rounded-full', isClaimed ? 'bg-gray-100 text-gray-400' : 'bg-blue-50 text-blue-600 border border-blue-100')}>
+                            {r.date}{r.shifts?.length > 0 ? ` · ${r.shifts.map(s => shiftLabel[s] ?? s).join('/')}` : ''}
+                          </span>
+                        )
+                      })}
                     </div>
+
+                    {/* مركزي */}
+                    <p className="text-[11px] text-red-400">{offer.ownerStation}</p>
                   </div>
 
-                  {/* ─── Section 2: المختار ───────────────────────────── */}
-                  {isClaimed && (
-                    <>
-                      <div className="my-4 border-t border-gray-100" />
-                      <p className="text-xs font-bold text-[#2E86AB] mb-3">المختار</p>
+                  {/* ── Divider with بدال ────────────────────────── */}
+                  <div className="flex items-center gap-2 my-3">
+                    <div className="flex-1 h-px bg-gray-200" />
+                    <span className="text-xs font-bold text-gray-400 px-2">بدال</span>
+                    <div className="flex-1 h-px bg-gray-200" />
+                  </div>
 
-                      <div className="space-y-2.5">
-                        {/* الاسم */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-gray-400">الاسم</span>
-                          <span className="text-xs font-semibold text-gray-800">{otherName || '—'}</span>
-                        </div>
-                        {/* المركز */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-gray-400">المركز</span>
-                          <span className="text-xs font-semibold text-gray-800">{otherStation || '—'}</span>
-                        </div>
-                        {/* المناوبة المتفق عليها */}
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-[11px] text-gray-400 shrink-0">المناوبة المتفق عليها</span>
-                          {repDay ? (
-                            <span className="text-xs font-semibold text-gray-800 text-left">
-                              {repDay.date}
-                              {repDay.shifts?.length > 0 && (
-                                <span className="text-[10px] font-normal text-gray-500 mr-1">
-                                  {repDay.shifts.map(s => shiftLabel[s] ?? s).join(' · ')}
-                                </span>
-                              )}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-400">—</span>
-                          )}
-                        </div>
+                  {/* ── Their side: green accent (only if claimed) ─ */}
+                  {isClaimed ? (
+                    <div className="bg-green-50 border border-green-100 rounded-xl p-3">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="text-sm font-bold text-gray-800">{otherName}</span>
+                        {otherStation && <span className="text-[11px] text-gray-400">· {otherStation}</span>}
                       </div>
-
-                      {/* Accept / Reject for pending selection */}
-                      {offer.status === 'selected' && offer.selectorName && (
-                        <div className="mt-4 pt-3 border-t border-orange-100">
-                          <p className="text-xs text-orange-700 font-semibold mb-2">
-                            ✋ طلب اختيار — هل تقبل؟
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleAccept(offer)}
-                              disabled={accepting === offer.id || rejecting === offer.id}
-                              className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 text-white text-xs font-semibold py-2.5 rounded-xl disabled:opacity-50"
-                            >
-                              {accepting === offer.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                              قبول
-                            </button>
-                            <button
-                              onClick={() => handleReject(offer)}
-                              disabled={accepting === offer.id || rejecting === offer.id}
-                              className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 text-red-600 border border-red-200 text-xs font-semibold py-2.5 rounded-xl disabled:opacity-50"
-                            >
-                              {rejecting === offer.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
-                              رفض
-                            </button>
-                          </div>
-                        </div>
+                      <p className="text-[11px] font-bold text-green-500 mb-1.5">يوم التبديل</p>
+                      {repDay ? (
+                        <span className="text-xs bg-green-600 text-white px-2.5 py-1 rounded-full font-semibold">
+                          {repDay.date}{repDay.shifts?.length > 0 ? ` · ${repDay.shifts.map(s => shiftLabel[s] ?? s).join('/')}` : ''}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
                       )}
-                    </>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-gray-200 p-3 text-center">
+                      <p className="text-xs text-gray-400">في انتظار من يختار</p>
+                    </div>
                   )}
 
-                  <p className="text-[11px] text-gray-300 mt-4">
+                  {/* Accept / Reject for pending selection */}
+                  {offer.status === 'selected' && offer.selectorName && (
+                    <div className="mt-3 pt-3 border-t border-orange-100">
+                      <p className="text-xs text-orange-700 font-semibold mb-2">✋ طلب اختيار — هل تقبل؟</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleAccept(offer)}
+                          disabled={accepting === offer.id || rejecting === offer.id}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 text-white text-xs font-semibold py-2.5 rounded-xl disabled:opacity-50"
+                        >
+                          {accepting === offer.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                          قبول
+                        </button>
+                        <button
+                          onClick={() => handleReject(offer)}
+                          disabled={accepting === offer.id || rejecting === offer.id}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 text-red-600 border border-red-200 text-xs font-semibold py-2.5 rounded-xl disabled:opacity-50"
+                        >
+                          {rejecting === offer.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                          رفض
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-[11px] text-gray-300 mt-3">
                     {offer.createdAt ? ((d: Date) => `${d.getDate()} ${['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'][d.getMonth()]} ${d.getFullYear()}`)((offer.createdAt as any).toDate()) : ''}
                   </p>
                 </div>
+
+                {/* ── Footer: Admin confirmed banner ──────────── */}
+                {offer.status === 'confirmed' && (
+                  <div className="bg-green-500 text-white text-center text-xs font-bold py-2.5 flex items-center justify-center gap-1.5 tracking-wide">
+                    <span>✓</span><span>مؤكد من الإدارة</span>
+                  </div>
+                )}
               </div>
             )
           })}

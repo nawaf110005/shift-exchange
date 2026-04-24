@@ -115,16 +115,10 @@ export default function SelectedOffersPage() {
             return (
               <div key={offer.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
-                {/* ✓ Admin-confirmed banner */}
-                {offer.status === 'confirmed' && (
-                  <div className="bg-green-500 text-white text-center text-xs font-bold py-2 flex items-center justify-center gap-1.5 tracking-wide">
-                    <span>✓</span><span>مؤكد من الإدارة</span>
-                  </div>
-                )}
-
-                <div className="p-4">
-                  {/* Top row: status badge + cancel button */}
-                  <div className="flex items-center justify-between mb-4">
+                {/* ── Header row ─────────────────────────────────── */}
+                <div className="flex items-center justify-between px-4 pt-4 pb-3">
+                  <span className="text-sm font-bold text-gray-800">{offer.ownerName || '—'}</span>
+                  <div className="flex items-center gap-2">
                     <span className={clsx('text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap', statusColor(offer.status))}>
                       {statusLabel(offer.status)}
                     </span>
@@ -138,81 +132,82 @@ export default function SelectedOffersPage() {
                           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           : <XCircle className="w-3.5 h-3.5" />
                         }
-                        إلغاء الاختيار
+                        إلغاء
                       </button>
                     )}
                   </div>
+                </div>
 
-                  {/* ─── Section 1: عرضي ─────────────────────────────── */}
-                  <p className="text-xs font-bold text-[#1B3A6B] mb-3">عرضي</p>
+                <div className="px-4 pb-4">
+                  {/* ── Their side (offer owner): red accent ────── */}
+                  <div className="bg-red-50 border border-red-100 rounded-xl p-3">
 
-                  {/* أيام الطلب */}
-                  <div className="mb-3">
-                    <p className="text-[11px] text-gray-400 mb-1.5">أيام الطلب</p>
-                    <div className="flex flex-wrap gap-1.5">
+                    {/* يوم الطلب */}
+                    <p className="text-[11px] font-bold text-red-500 mb-1.5">يوم الطلب</p>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
                       {offer.daysOff.map((d, i) => (
-                        <span key={i} className="text-xs bg-red-50 text-red-700 border border-red-100 px-2.5 py-1 rounded-full">
+                        <span key={i} className="text-xs bg-red-500 text-white px-2.5 py-1 rounded-full font-semibold">
                           {d.date} · {shiftLabel[d.shift] ?? d.shift}
                         </span>
                       ))}
                     </div>
+
+                    {/* أيام البديل */}
+                    <p className="text-[11px] font-bold text-blue-500 mb-1.5">أيام البديل</p>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {offer.replacementDays.map((r, i) => {
+                        const isAgreed = repDay && r.date === repDay.date
+                        return isAgreed ? (
+                          <span key={i} className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-full font-semibold flex items-center gap-1">
+                            <span>✓</span>
+                            <span>{r.date}{r.shifts?.length > 0 ? ` · ${r.shifts.map(s => shiftLabel[s] ?? s).join('/')}` : ''}</span>
+                          </span>
+                        ) : (
+                          <span key={i} className="text-xs bg-gray-100 text-gray-400 px-2.5 py-1 rounded-full">
+                            {r.date}{r.shifts?.length > 0 ? ` · ${r.shifts.map(s => shiftLabel[s] ?? s).join('/')}` : ''}
+                          </span>
+                        )
+                      })}
+                    </div>
+
+                    {/* مركز صاحب العرض */}
+                    <p className="text-[11px] text-red-400">{offer.ownerStation}</p>
                   </div>
 
-                  {/* مركزي */}
-                  <div className="mb-3">
-                    <p className="text-[11px] text-gray-400 mb-1">مركزي</p>
-                    <p className="text-sm font-semibold text-gray-800">{offer.ownerStation}</p>
+                  {/* ── Divider with بدال ────────────────────────── */}
+                  <div className="flex items-center gap-2 my-3">
+                    <div className="flex-1 h-px bg-gray-200" />
+                    <span className="text-xs font-bold text-gray-400 px-2">بدال</span>
+                    <div className="flex-1 h-px bg-gray-200" />
                   </div>
 
-                  {/* أيام البديل */}
-                  <div>
-                    <p className="text-[11px] text-gray-400 mb-1.5">أيام البديل</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {offer.replacementDays.map((r, i) => (
-                        <span key={i} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-1 rounded-full">
-                          {r.date}{r.shifts?.length > 0 ? ` · ${r.shifts.map(s => shiftLabel[s] ?? s).join('/')}` : ''}
-                        </span>
-                      ))}
+                  {/* ── My side (current user as claimer): green ── */}
+                  <div className="bg-green-50 border border-green-100 rounded-xl p-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="text-[11px] text-gray-400 font-medium bg-green-100 px-1.5 py-0.5 rounded">أنا</span>
+                      <span className="text-sm font-bold text-gray-800">{user?.displayName || '—'}</span>
                     </div>
+                    <p className="text-[11px] font-bold text-green-500 mb-1.5">يوم التبديل</p>
+                    {repDay ? (
+                      <span className="text-xs bg-green-600 text-white px-2.5 py-1 rounded-full font-semibold">
+                        {repDay.date}{repDay.shifts?.length > 0 ? ` · ${repDay.shifts.map(s => shiftLabel[s] ?? s).join('/')}` : ''}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
                   </div>
 
-                  {/* ─── Section 2: المختار ───────────────────────────── */}
-                  <div className="my-4 border-t border-gray-100" />
-                  <p className="text-xs font-bold text-[#2E86AB] mb-3">المختار</p>
-
-                  <div className="space-y-2.5">
-                    {/* الاسم */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-gray-400">الاسم</span>
-                      <span className="text-xs font-semibold text-gray-800">{offer.ownerName || '—'}</span>
-                    </div>
-                    {/* المركز */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-gray-400">المركز</span>
-                      <span className="text-xs font-semibold text-gray-800">{offer.ownerStation || '—'}</span>
-                    </div>
-                    {/* المناوبة المتفق عليها */}
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-[11px] text-gray-400 shrink-0">المناوبة المتفق عليها</span>
-                      {repDay ? (
-                        <span className="text-xs font-semibold text-gray-800 text-left">
-                          {repDay.date}
-                          {repDay.shifts?.length > 0 && (
-                            <span className="text-[10px] font-normal text-gray-500 mr-1">
-                              {repDay.shifts.map(s => shiftLabel[s] ?? s).join(' · ')}
-                            </span>
-                          )}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-gray-300 mt-4">
+                  <p className="text-[11px] text-gray-300 mt-3">
                     {offer.createdAt ? ((d: Date) => `${d.getDate()} ${['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'][d.getMonth()]} ${d.getFullYear()}`)((offer.createdAt as any).toDate()) : ''}
                   </p>
                 </div>
+
+                {/* ── Footer: Admin confirmed banner ──────────── */}
+                {offer.status === 'confirmed' && (
+                  <div className="bg-green-500 text-white text-center text-xs font-bold py-2.5 flex items-center justify-center gap-1.5 tracking-wide">
+                    <span>✓</span><span>مؤكد من الإدارة</span>
+                  </div>
+                )}
               </div>
             )
           })}
