@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Offer, ReplacementDay, selectOfferDirect, getStations, Station } from '@/lib/firebase/firestore'
+import { Offer, ReplacementDay, ShiftType, selectOfferDirect, getStations, Station } from '@/lib/firebase/firestore'
 import { getCurrentUser, onAuth } from '@/lib/firebase/auth'
 import { X, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -60,11 +60,14 @@ function formatArabicDate(dateStr: string): string {
   return new Date(y, m - 1, d).toLocaleDateString('ar-SA', { day: 'numeric', month: 'long' })
 }
 
-/** Human-readable Arabic label for a replacement day */
-function dayDisplayLabel(r: ReplacementDay): string {
-  const dateStr = formatArabicDate(r.date)
-  // Pure night-only entries get a "ليلة" prefix to make the overnight nature clear
-  if (r.shifts.length === 1 && r.shifts[0] === 'night') return `ليلة ${dateStr}`
+/** A single selectable (date + shift type) combination */
+type ShiftOption = { date: string; shift: ShiftType }
+
+/** Human-readable Arabic date label for a shift option */
+function shiftOptionDateLabel(opt: ShiftOption): string {
+  const dateStr = formatArabicDate(opt.date)
+  // Night-shift options use a "ليلة" prefix to make the overnight nature clear
+  if (opt.shift === 'night') return `ليلة ${dateStr}`
   return dateStr
 }
 
@@ -73,11 +76,18 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
   // are collapsed into a single selectable option.
   const displayDays = useMemo(() => mergeNightShifts(offer.replacementDays), [offer.replacementDays])
 
+  // Flatten each ReplacementDay into individual (date + shift) pairs so the
+  // claimer picks exactly ONE combination, not an entire day with multiple shifts.
+  const shiftOptions = useMemo<ShiftOption[]>(
+    () => displayDays.flatMap(r => r.shifts.map(shift => ({ date: r.date, shift }))),
+    [displayDays]
+  )
+
   const [user,                   setUser]                   = useState<User | null>(getCurrentUser())
   const [loading,                setLoading]                = useState(false)
   const [done,                   setDone]                   = useState(false)
-  const [selectedDay,            setSelectedDay]            = useState<ReplacementDay | null>(
-    displayDays.length === 1 ? displayDays[0] : null
+  const [selectedDay,            setSelectedDay]            = useState<ShiftOption | null>(
+    shiftOptions.length === 1 ? shiftOptions[0] : null
   )
   const [stations,               setStations]               = useState<Station[]>([])
   const [claimerName,            setClaimerName]            = useState(getCurrentUser()?.displayName || '')
@@ -102,6 +112,8 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
   async function handleConfirm() {
     if (!selectedDay || !claimerStation || !claimerName.trim()) return
     setLoading(true)
+    // Wrap the chosen (date + shift) pair into the ReplacementDay shape expected by Firestore
+    const chosenReplacementDay: ReplacementDay = { date: selectedDay.date, shifts: [selectedDay.shift] }
     try {
       await selectOfferDirect(
         offer.id!,
@@ -109,7 +121,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
         user?.displayName || '',
         '',   // code — not required from selector
         '',   // legacy selectorStation — not used in new flow
-        selectedDay,
+        chosenReplacementDay,
         claimerStation,
         claimerEmployeeNumber || undefined,
         claimerName.trim(),
@@ -198,19 +210,19 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                 )}
               </div>
 
-              {/* Replacement day picker — claimer must choose exactly one */}
+              {/* Replacement day picker — claimer must choose exactly ONE date+shift combination */}
               <div>
                 <p className="text-xs text-gray-500 mb-2">
-                  اختر <span className="font-semibold text-[#1B3A6B]">يومًا بديلًا واحدًا</span> من الأيام التي يعرضها صاحب العرض
+                  اختر <span className="font-semibold text-[#1B3A6B]">وردية بديلة واحدة</span> من الخيارات التي يعرضها صاحب العرض
                 </p>
                 <div className="flex flex-col gap-2">
-                  {displayDays.map((r, i) => {
-                    const isSelected = selectedDay?.date === r.date
+                  {shiftOptions.map((opt, i) => {
+                    const isSelected = selectedDay?.date === opt.date && selectedDay?.shift === opt.shift
                     return (
                       <button
                         key={i}
                         type="button"
-                        onClick={() => setSelectedDay(r)}
+                        onClick={() => setSelectedDay(opt)}
                         className={clsx(
                           'flex items-center gap-3 w-full text-right px-4 py-3 rounded-xl border text-sm transition-colors',
                           isSelected
@@ -225,21 +237,21 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                         )}>
                           {isSelected && <span className="w-2 h-2 rounded-full bg-green-500 block" />}
                         </span>
-                        <span className="flex-1">{dayDisplayLabel(r)}</span>
+                        <span className="flex-1">{shiftOptionDateLabel(opt)}</span>
                         <span className={clsx(
                           'text-xs px-2 py-0.5 rounded-full border',
                           isSelected
                             ? 'bg-green-100 text-green-700 border-green-200'
                             : 'bg-gray-100 text-gray-500 border-gray-200'
                         )}>
-                          {r.shifts.map(s => shiftLabel[s] ?? s).join(' / ')}
+                          {shiftLabel[opt.shift] ?? opt.shift}
                         </span>
                       </button>
                     )
                   })}
                 </div>
                 {!selectedDay && (
-                  <p className="text-xs text-red-500 mt-1.5">يرجى اختيار يوم للمتابعة</p>
+                  <p className="text-xs text-red-500 mt-1.5">يرجى اختيار وردية للمتابعة</p>
                 )}
               </div>
 
