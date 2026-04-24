@@ -6,7 +6,11 @@ import Navbar from '@/components/ui/Navbar'
 import './globals.css'
 
 export const metadata: Metadata = {
+<<<<<<< HEAD
   title: 'تبديل الشفتات',
+=======
+  title: 'نظام تبادل الدوام',
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   description: 'منصة تبادل عروض الدوام للموظفين',
   manifest: '/manifest.json',
 }
@@ -62,7 +66,11 @@ export default async function RootLayout({
         {/* iOS PWA status bar */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<<<<<<< HEAD
         <meta name="apple-mobile-web-app-title" content="تبديل الشفتات" />
+=======
+        <meta name="apple-mobile-web-app-title" content="تبادل الدوام" />
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
       </head>
       <body className="bg-gray-50 font-arabic min-h-screen">
         <NextIntlClientProvider messages={messages}>

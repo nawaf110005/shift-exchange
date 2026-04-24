@@ -34,8 +34,11 @@ export interface Offer {
   selectorName?: string
   selectorCode?: string
   selectorStation?: string
+<<<<<<< HEAD
   confirmedByName?: string
   confirmedByEmail?: string
+=======
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   createdAt?: Timestamp
   updatedAt?: Timestamp
   confirmedAt?: Timestamp
@@ -117,8 +120,11 @@ export async function getMyOffers(uid: string): Promise<Offer[]> {
 
 /** Get offers selected by a specific user (Selected Offers page — includes confirmed) */
 export async function getSelectedOffers(uid: string): Promise<Offer[]> {
+<<<<<<< HEAD
   // Query by selectorUid only (no inequality filter) — avoids index/compat issues.
   // Client page renders both 'selected' (can cancel) and 'confirmed' (final) correctly.
+=======
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   const q = query(
     offersCol(),
     where('selectorUid', '==', uid),
@@ -236,8 +242,12 @@ export async function toggleStation(id: string, active: boolean): Promise<void> 
 
 /** Fetch all in_progress offers for a given month (for match preview) */
 export async function getOffersForMonth(offerMonth: string): Promise<Offer[]> {
+<<<<<<< HEAD
   // No orderBy — avoids requiring a composite index on (status, offerMonth, createdAt).
   // Sort client-side instead.
+=======
+  // No orderBy — avoids requiring a composite index; sort client-side instead
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   const q = query(
     offersCol(),
     where('status', '==', 'in_progress'),
@@ -259,11 +269,19 @@ export async function getOffersForMonth(offerMonth: string): Promise<Offer[]> {
  * A date match between my أيام الطلب (daysOff) and their الأيام البديلة (replacementDays)
  * is the scoring gate. The percentage for each matched day is determined by shift compatibility:
  *
+<<<<<<< HEAD
  *   - Same shift type          → 100%  (perfect)
  *   - 'overlap' covers day/night → 75%  (close)
  *   - day/night covers 'overlap' → 50%  (partial)
  *   - Date matches but shift incompatible → 0%
  *   - No date match at all       → 0%
+=======
+ *   - Same shift type              → 100%  (perfect)
+ *   - 'overlap' covers day/night   → 75%   (close)
+ *   - day/night covers 'overlap'   → 50%   (partial)
+ *   - Date match but incompatible  → 0%
+ *   - No date match                → 0%
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
  *
  * Overall score = average per-day score across all my requested days off.
  */
@@ -273,9 +291,15 @@ export function computeMatchScore(
   other: Offer
 ): number {
   function shiftScore(wanted: ShiftType, available: ShiftType[]): number {
+<<<<<<< HEAD
     if (available.includes(wanted)) return 1                                          // exact match → 100%
     if (available.includes('overlap') && (wanted === 'day' || wanted === 'night')) return 0.75  // overlap covers day/night → 75%
     if (wanted === 'overlap' && (available.includes('day') || available.includes('night'))) return 0.5  // partial overlap → 50%
+=======
+    if (available.includes(wanted)) return 1
+    if (available.includes('overlap') && (wanted === 'day' || wanted === 'night')) return 0.75
+    if (wanted === 'overlap' && (available.includes('day') || available.includes('night'))) return 0.5
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
     return 0
   }
 
@@ -285,7 +309,10 @@ export function computeMatchScore(
   let total = 0
   for (const myDay of validMyDays) {
     const theirRep = other.replacementDays.find(r => r.date === myDay.date)
+<<<<<<< HEAD
     // Date match is the gate; shift compatibility sets the per-day score
+=======
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
     total += theirRep ? shiftScore(myDay.shift, theirRep.shifts) : 0
   }
 
@@ -296,8 +323,12 @@ export function computeMatchScore(
 
 /**
  * Migrate all offers owned by oldUid to newUid.
+<<<<<<< HEAD
  * Called after an anonymous user successfully signs in with Google
  * and their Google account already exists (so the UID changes).
+=======
+ * Called after an anonymous user signs in with Google and the UID changes.
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
  */
 export async function migrateOffersToNewUid(oldUid: string, newUid: string): Promise<void> {
   const q = query(offersCol(), where('ownerUid', '==', oldUid))
@@ -351,6 +382,7 @@ export async function cancelSelectionDirect(offerId: string): Promise<void> {
   })
 }
 
+<<<<<<< HEAD
 /** Owner accepts selector's choice → confirmed (also stores the admin/owner who confirmed) */
 export async function ownerAcceptOffer(
   offerId: string,
@@ -363,6 +395,14 @@ export async function ownerAcceptOffer(
     updatedAt:        serverTimestamp(),
     ...(confirmedByName  ? { confirmedByName }  : {}),
     ...(confirmedByEmail ? { confirmedByEmail } : {}),
+=======
+/** Owner accepts selector's choice → confirmed */
+export async function ownerAcceptOffer(offerId: string): Promise<void> {
+  await updateDoc(doc(db, 'offers', offerId), {
+    status:      'confirmed',
+    confirmedAt: serverTimestamp(),
+    updatedAt:   serverTimestamp(),
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   })
 }
 

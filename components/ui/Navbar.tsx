@@ -22,6 +22,7 @@ export default function Navbar() {
   const [authReady,    setAuthReady]    = useState(false)
 
   useEffect(() => {
+<<<<<<< HEAD
     // Subscribe to auth state first; only create anonymous session if truly no user
     const unsub = onAuth(async (u) => {
       setUser(u)
@@ -34,11 +35,22 @@ export default function Navbar() {
         // No user at all — ensure we have at least an anonymous session
         try { await ensureAnonymousAuth() } catch {}
       }
+=======
+    // Ensure there is always at least an anonymous session on app load
+    ensureAnonymousAuth()
+
+    return onAuth(async (u) => {
+      setUser(u)
+      setAuthReady(true)
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
       // Anonymous users are never admin
       if (u && !u.isAnonymous) setAdmin(await checkAdmin())
       else setAdmin(false)
     })
+<<<<<<< HEAD
     return unsub
+=======
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   }, [])
 
   const isActive = (href: string) => pathname.includes(href)
@@ -52,7 +64,10 @@ export default function Navbar() {
     setSigningIn(true)
     try { await signInWithGoogle() }
     catch (e: any) {
+<<<<<<< HEAD
       // user closed popup — ignore
+=======
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
       if (e?.code !== 'auth/popup-closed-by-user') console.error(e)
     } finally { setSigningIn(false) }
   }
@@ -68,12 +83,22 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
 
+<<<<<<< HEAD
             {/* Logo */}
             <div className="flex flex-col leading-tight">
               <Link href="/offers" className="flex items-center gap-2 font-bold text-xl">
                 <CalendarDays className="w-6 h-6 text-[#2E86AB]" />
                 <span>تبديل الشفتات</span>
               </Link>
+=======
+            {/* Logo + sponsor */}
+            <div className="flex flex-col leading-tight">
+              <Link href="/offers" className="flex items-center gap-2 font-bold text-xl">
+                <CalendarDays className="w-6 h-6 text-[#2E86AB]" />
+                <span>تبادل الدوام</span>
+              </Link>
+              <span className="text-[10px] text-blue-300 mr-8">برعاية عبدالله الرزيقي</span>
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
             </div>
 
             {/* Nav links + auth */}
@@ -94,7 +119,11 @@ export default function Navbar() {
                 </Link>
               ))}
 
+<<<<<<< HEAD
               {/* Auth button */}
+=======
+              {/* Auth button — show sign-in for anonymous or unauthenticated */}
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
               {authReady && (
                 user && !user.isAnonymous ? (
                   <div className="flex items-center gap-2 mr-2 border-r border-white/20 pr-3">
@@ -125,10 +154,20 @@ export default function Navbar() {
       <header className="md:hidden bg-[#1B3A6B] text-white sticky top-0 z-50 shadow-md"
               style={{ paddingTop: 'var(--safe-top)' }}>
         <div className="flex items-center justify-between px-4 h-14">
+<<<<<<< HEAD
           <Link href="/offers" className="flex items-center gap-2 font-bold text-lg">
             <CalendarDays className="w-5 h-5 text-[#2E86AB]" />
             <span>تبديل الشفتات</span>
           </Link>
+=======
+          <div className="flex flex-col leading-tight">
+            <Link href="/offers" className="flex items-center gap-2 font-bold text-lg">
+              <CalendarDays className="w-5 h-5 text-[#2E86AB]" />
+              <span>تبادل الدوام</span>
+            </Link>
+            <span className="text-[9px] text-blue-300 mr-7">برعاية عبدالله الرزيقي</span>
+          </div>
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
 
           {/* Mobile auth */}
           {authReady && (

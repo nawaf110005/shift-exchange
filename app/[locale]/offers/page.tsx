@@ -59,7 +59,11 @@ export default function OffersPage() {
   }
 
   return (
+<<<<<<< HEAD
     <div className="pb-28">
+=======
+    <div>
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div>

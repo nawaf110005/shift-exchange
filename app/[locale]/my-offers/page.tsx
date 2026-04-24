@@ -2,12 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { getMyOffers, deleteOffer, ownerAcceptOffer, ownerRejectOffer, Offer } from '@/lib/firebase/firestore'
+<<<<<<< HEAD
 import { onAuth, signInWithGoogle, getCachedUid } from '@/lib/firebase/auth'
+=======
+import { onAuth, signInWithGoogle } from '@/lib/firebase/auth'
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
 import { statusColor, statusLabel } from '@/lib/utils/validation'
 import OfferForm from '@/components/offers/OfferForm'
 import { Plus, Pencil, Trash2, ListChecks, Loader2, LogIn, CheckCircle, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
+<<<<<<< HEAD
 
 import { User } from 'firebase/auth'
 
@@ -25,6 +30,14 @@ export default function MyOffersPage() {
   const [offers,    setOffers]    = useState<Offer[]>([])
   const [loading,   setLoading]   = useState(true)
   const [user,      setUser]      = useState<User | null | undefined>(hasCachedUser ? undefined : null)
+=======
+import { User } from 'firebase/auth'
+
+export default function MyOffersPage() {
+  const [offers,    setOffers]    = useState<Offer[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [user,      setUser]      = useState<User | null | undefined>(undefined)
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   const [showForm,  setShowForm]  = useState(false)
   const [editing,   setEditing]   = useState<Offer | null>(null)
   const [deleting,  setDeleting]  = useState<string | null>(null)
@@ -35,6 +48,7 @@ export default function MyOffersPage() {
   async function load(uid: string) {
     setLoading(true)
     const data = await getMyOffers(uid)
+<<<<<<< HEAD
 
     // Auto-delete in_progress offers whose dates have all passed (unclaimed & expired)
     const toDelete = data.filter(o => o.status === 'in_progress' && isExpired(o))
@@ -44,6 +58,9 @@ export default function MyOffersPage() {
 
     const active = data.filter(o => !toDelete.some(d => d.id === o.id))
     setOffers(active)
+=======
+    setOffers(data)
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
     setLoading(false)
   }
 
@@ -53,7 +70,10 @@ export default function MyOffersPage() {
       if (u) load(u.uid)
       else setLoading(false)
     })
+<<<<<<< HEAD
   // eslint-disable-next-line react-hooks/exhaustive-deps
+=======
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   }, [])
 
   async function handleSignIn() {
@@ -82,11 +102,15 @@ export default function MyOffersPage() {
     if (!confirm(`قبول اختيار ${offer.selectorName}؟ سيصبح العرض مؤكداً ولا يمكن التراجع.`)) return
     setAccepting(offer.id!)
     try {
+<<<<<<< HEAD
       await ownerAcceptOffer(
         offer.id!,
         user?.displayName ?? undefined,
         user?.email ?? undefined,
       )
+=======
+      await ownerAcceptOffer(offer.id!)
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
       toast.success('✅ تم تأكيد التبادل')
       if (user) load(user.uid)
     } catch { toast.error('حدث خطأ') }
@@ -110,7 +134,11 @@ export default function MyOffersPage() {
     if (user) load(user.uid)
   }
 
+<<<<<<< HEAD
   // Still waiting for Firebase to restore session
+=======
+  // Still determining auth state
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   if (user === undefined) {
     return (
       <div className="flex justify-center py-24">
@@ -119,6 +147,7 @@ export default function MyOffersPage() {
     )
   }
 
+<<<<<<< HEAD
   // Not logged in → show sign-in prompt directly (no hanging spinner)
   if (!user) {
     return (
@@ -140,6 +169,11 @@ export default function MyOffersPage() {
   return (
     <div>
       {/* Guest banner */}
+=======
+  return (
+    <div>
+      {/* Guest banner for anonymous users */}
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
       {user?.isAnonymous && (
         <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           <p className="text-sm text-amber-800">
@@ -188,7 +222,10 @@ export default function MyOffersPage() {
         <div className="space-y-3">
           {offers.map(offer => (
             <div key={offer.id} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 shadow-sm">
+<<<<<<< HEAD
               {/* Status + meta row */}
+=======
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div className="flex flex-wrap items-center gap-2 min-w-0">
                   <span className={clsx('text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap', statusColor(offer.status))}>
@@ -197,8 +234,11 @@ export default function MyOffersPage() {
                   <span className="text-sm text-gray-500 truncate">{offer.ownerStation}</span>
                   <span className="text-xs text-gray-400">{offer.offerMonth}</span>
                 </div>
+<<<<<<< HEAD
 
                 {/* Action buttons — only for in_progress (non-expired) */}
+=======
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
                 {offer.status === 'in_progress' && (
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
@@ -220,7 +260,10 @@ export default function MyOffersPage() {
                 )}
               </div>
 
+<<<<<<< HEAD
               {/* Days off chips */}
+=======
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
               <div className="mb-2">
                 <p className="text-xs text-gray-400 mb-1.5">أيام الطلب</p>
                 <div className="flex flex-wrap gap-1">
@@ -232,11 +275,18 @@ export default function MyOffersPage() {
                 </div>
               </div>
 
+<<<<<<< HEAD
               {/* Selector pending — accept / reject */}
               {offer.status === 'selected' && offer.selectorName && (
                 <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-xl space-y-2">
                   <p className="text-xs text-orange-700 font-semibold">
                     ✋ طلب اختيار من: {offer.selectorName}
+=======
+              {offer.status === 'selected' && offer.selectorName && (
+                <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-xl space-y-2">
+                  <p className="text-xs text-orange-700 font-semibold">
+                    ✋ طلب اختيار من: {offer.selectorName} — {offer.selectorStation}
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -259,6 +309,7 @@ export default function MyOffersPage() {
                 </div>
               )}
 
+<<<<<<< HEAD
               {/* Confirmed badge */}
               {offer.status === 'confirmed' && (
                 <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl">
@@ -268,6 +319,11 @@ export default function MyOffersPage() {
                       اعتمد بواسطة: {(offer as any).confirmedByName} · {(offer as any).confirmedByEmail}
                     </p>
                   )}
+=======
+              {offer.status === 'confirmed' && (
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+                  <p className="text-xs text-green-700 font-semibold">✅ تم تأكيد التبادل مع {offer.selectorName}</p>
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
                 </div>
               )}
 

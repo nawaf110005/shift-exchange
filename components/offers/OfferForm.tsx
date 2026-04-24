@@ -46,8 +46,12 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
   const [name,            setName]            = useState(offer?.ownerName    || displayName || '')
   const [code,            setCode]            = useState(offer?.ownerCode    || '')
   const [station,         setStation]         = useState(offer?.ownerStation || '')
+<<<<<<< HEAD
   // Always exactly one day off — take the first entry from existing offer, or a blank default
   const [daysOff,         setDaysOff]         = useState<DayOff[]>([offer?.daysOff?.[0] ?? { date: '', shift: 'day' }])
+=======
+  const [daysOff,         setDaysOff]         = useState<DayOff[]>(offer?.daysOff || [{ date: '', shift: 'day' }])
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   const [replacementDays, setReplacementDays] = useState<ReplacementDay[]>(offer?.replacementDays || [{ date: '', shifts: ['day'] }])
   const [stations,        setStations]        = useState<Station[]>([])
   const [loading,         setLoading]         = useState(false)
@@ -91,13 +95,27 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
     }
   }, [uid, offer?.id])
 
+<<<<<<< HEAD
   // Debounced trigger: re-check whenever daysOff or replacementDays change
+=======
+  // Debounced trigger: re-check whenever daysOff change
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   useEffect(() => {
     const timer = setTimeout(() => refreshMatches(daysOff, replacementDays), 600)
     return () => clearTimeout(timer)
   }, [daysOff, replacementDays, refreshMatches])
 
+<<<<<<< HEAD
   // ─── Day Off helper ───────────────────────────────────────────────────────
+=======
+  // ─── Days Off helpers ─────────────────────────────────────────────────────
+  function addDayOff() {
+    setDaysOff(d => [...d, { date: '', shift: 'day' }])
+  }
+  function removeDayOff(i: number) {
+    setDaysOff(d => d.filter((_, idx) => idx !== i))
+  }
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   function updateDayOff(i: number, field: keyof DayOff, value: string) {
     setDaysOff(d => d.map((item, idx) =>
       idx === i ? { ...item, [field]: value } : item
@@ -227,6 +245,7 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
             </div>
           </div>
 
+<<<<<<< HEAD
           {/* Days off — exactly one day */}
           <div>
             <div className="mb-3">
@@ -240,6 +259,35 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
                 className="border border-gray-300 rounded-xl px-3 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E86AB]">
                 {SHIFTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
+=======
+          {/* Days off */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-semibold text-gray-700">أيام الطلب</label>
+              <button type="button" onClick={addDayOff}
+                className="flex items-center gap-1 text-sm text-[#2E86AB] font-medium px-3 py-1.5 rounded-lg bg-blue-50 min-h-[36px]">
+                <Plus className="w-4 h-4" /> إضافة يوم
+              </button>
+            </div>
+            <div className="space-y-2">
+              {daysOff.map((d, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input type="date" value={d.date} min={today} max={maxDate}
+                    onChange={e => updateDayOff(i, 'date', e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-xl px-3 py-3 focus:outline-none focus:ring-2 focus:ring-[#2E86AB]" />
+                  <select value={d.shift} onChange={e => updateDayOff(i, 'shift', e.target.value)}
+                    className="border border-gray-300 rounded-xl px-3 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E86AB]">
+                    {SHIFTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                  {daysOff.length > 1 && (
+                    <button type="button" onClick={() => removeDayOff(i)}
+                      className="p-2.5 text-gray-400 active:text-red-500 active:bg-red-50 rounded-xl transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
             </div>
           </div>
 
@@ -343,7 +391,11 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
                           ))}
                         </div>
 
+<<<<<<< HEAD
                         {/* Select this offer */}
+=======
+                        {/* Select this offer directly */}
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
                         <button
                           type="button"
                           onClick={() => setSelectingOffer(m)}

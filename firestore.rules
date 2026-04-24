@@ -41,7 +41,11 @@ service cloud.firestore {
         && request.resource.data.daysOff.size() > 0
         && request.resource.data.replacementDays.size() <= 16;
 
+<<<<<<< HEAD
       // UPDATE rules — four allowed cases:
+=======
+      // UPDATE rules — six allowed cases:
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
       allow update: if
         // 1. Owner edits content (only while in_progress)
         (isOwner(resource.data.ownerUid)
@@ -63,12 +67,20 @@ service cloud.firestore {
           && request.resource.data.status == 'in_progress'
           && !('selectorUid' in request.resource.data)
           && request.resource.data.ownerUid == resource.data.ownerUid)
+<<<<<<< HEAD
         // 4. Owner accepts selection → confirmed
+=======
+        // 4. Owner accepts selection -> confirmed
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
         || (isOwner(resource.data.ownerUid)
           && resource.data.status == 'selected'
           && request.resource.data.status == 'confirmed'
           && request.resource.data.ownerUid == resource.data.ownerUid)
+<<<<<<< HEAD
         // 5. Owner rejects selection → back to in_progress
+=======
+        // 5. Owner rejects selection -> back to in_progress
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
         || (isOwner(resource.data.ownerUid)
           && resource.data.status == 'selected'
           && request.resource.data.status == 'in_progress'
@@ -89,12 +101,20 @@ service cloud.firestore {
     match /userProfiles/{uid} {
       // Users read/write their own profile; admin reads all
       allow read: if isOwner(uid) || isAdmin();
+<<<<<<< HEAD
       allow write: if isOwner(uid);   // Cloud Functions handle admin writes
+=======
+      allow write: if isOwner(uid);
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
     }
 
     // ─── /stations ───────────────────────────────────────────────
     match /stations/{stationId} {
+<<<<<<< HEAD
       allow read: if true;           // Public — station names are not sensitive
+=======
+      allow read: if true;
+>>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
       allow write: if isAdmin();
     }
 
