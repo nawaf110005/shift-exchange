@@ -58,13 +58,18 @@ export default function OffersPage() {
     setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
 
+  // Exclude the current user's own offers from the browse page
+  const filteredOffers = myUid
+    ? offers.filter(o => o.ownerUid !== myUid)
+    : offers
+
   return (
     <div className="pb-28">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#1B3A6B]">عروض تبديل الدوام</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{offers.length} عرض متاح</p>
+          <p className="text-gray-500 text-sm mt-0.5">{filteredOffers.length} عرض متاح</p>
         </div>
 
         {/* View toggle */}
@@ -127,16 +132,16 @@ export default function OffersPage() {
         <div className="flex justify-center items-center py-24">
           <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#2E86AB] border-t-transparent" />
         </div>
-      ) : offers.length === 0 ? (
+      ) : filteredOffers.length === 0 ? (
         <div className="text-center py-24 text-gray-400">
           <CalendarDays className="w-14 h-14 mx-auto mb-4 opacity-30" />
           <p className="text-base">لا توجد عروض لشهر {monthLabel(month)}</p>
         </div>
       ) : view === 'calendar' ? (
-        <OfferCalendar offers={offers} onSelectOffer={setSelected} myUid={myUid} />
+        <OfferCalendar offers={filteredOffers} onSelectOffer={setSelected} myUid={myUid} />
       ) : (
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {offers.map(offer => (
+          {filteredOffers.map(offer => (
             <OfferCard
               key={offer.id}
               offer={offer}
