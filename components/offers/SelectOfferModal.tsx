@@ -3,6 +3,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Offer, ReplacementDay, ShiftType, selectOfferDirect, getStations, Station } from '@/lib/firebase/firestore'
 import { getCurrentUser, onAuth } from '@/lib/firebase/auth'
+import {
+  UserProfileData,
+  loadUserProfile,
+  saveUserProfile,
+} from '@/lib/firebase/userProfile'
 import { X, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { User } from 'firebase/auth'
@@ -26,8 +31,7 @@ function nextCalendarDay(dateStr: string): string {
 
 /**
  * Merge consecutive night-shift replacement days that represent the same
- * overnight shift (e.g. "2025-04-23 night" + "2025-04-24 night" → one entry
- * keeping the first date).  Any other combination is left unchanged.
+ * overnight shift.
  */
 function mergeNightShifts(days: ReplacementDay[]): ReplacementDay[] {
   const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date))
@@ -41,7 +45,6 @@ function mergeNightShifts(days: ReplacementDay[]): ReplacementDay[] {
     if (cur.shifts.includes('night') && i + 1 < sorted.length) {
       const nxt = sorted[i + 1]
       if (!skip.has(i + 1) && nxt.shifts.includes('night') && nxt.date === nextCalendarDay(cur.date)) {
-        // Same overnight shift — keep first date entry, discard the next-day duplicate
         result.push(cur)
         skip.add(i + 1)
         continue
@@ -66,57 +69,102 @@ type ShiftOption = { date: string; shift: ShiftType }
 /** Human-readable Arabic date label for a shift option */
 function shiftOptionDateLabel(opt: ShiftOption): string {
   const dateStr = formatArabicDate(opt.date)
-  // Night-shift options use a "ليلة" prefix to make the overnight nature clear
   if (opt.shift === 'night') return `ليلة ${dateStr}`
   return dateStr
 }
 
 export default function SelectOfferModal({ offer, onClose }: Props) {
-  // Deduplicated display list — consecutive night entries for the same overnight shift
-  // are collapsed into a single selectable option.
   const displayDays = useMemo(() => mergeNightShifts(offer.replacementDays), [offer.replacementDays])
 
-  // Flatten each ReplacementDay into individual (date + shift) pairs so the
-  // claimer picks exactly ONE combination, not an entire day with multiple shifts.
   const shiftOptions = useMemo<ShiftOption[]>(
     () => displayDays.flatMap(r => r.shifts.map(shift => ({ date: r.date, shift }))),
     [displayDays]
   )
 
-  const [user,                   setUser]                   = useState<User | null>(getCurrentUser())
-  const [loading,                setLoading]                = useState(false)
-  const [done,                   setDone]                   = useState(false)
-  const [selectedDay,            setSelectedDay]            = useState<ShiftOption | null>(
+  const [user,                  setUser]                  = useState<User | null>(getCurrentUser())
+  const [loading,               setLoading]               = useState(false)
+  const [done,                  setDone]                  = useState(false)
+  const [selectedDay,           setSelectedDay]           = useState<ShiftOption | null>(
     shiftOptions.length === 1 ? shiftOptions[0] : null
   )
-  const [stations,               setStations]               = useState<Station[]>([])
-  // Always start empty — only pre-fill from auth if displayName is a non-empty string.
-  // This forces every user (including signed-in Google users without a displayName) to
-  // explicitly type their name before the Confirm button becomes enabled.
-  const [claimerName,            setClaimerName]            = useState('')
-  const [claimerStation,         setClaimerStation]         = useState('')
-  const [claimerEmployeeNumber,  setClaimerEmployeeNumber]  = useState('')
+  const [stations,              setStations]              = useState<Station[]>([])
+  const [claimerName,           setClaimerName]           = useState('')
+  const [claimerStation,        setClaimerStation]        = useState('')
+  const [claimerEmployeeNumber, setClaimerEmployeeNumber] = useState('')
 
-  // Keep user in sync; pre-fill name only when auth provides a real display name.
+  // Saved profile — used to detect when values differ for "save as default?" prompt
+  const [savedProfile, setSavedProfile] = useState<Partial<UserProfileData>>({})
+
+  // On auth change: load profile and pre-fill form fields.
+  // NEVER use Google displayName — always use manually-entered profile name.
   useEffect(() => {
-    return onAuth((u) => {
+    return onAuth(async (u) => {
       setUser(u)
-      if (u?.displayName?.trim()) {
-        setClaimerName(prev => prev || u.displayName!.trim())
-      }
+      if (!u) return
+
+      const profile = await loadUserProfile(u.uid, u.isAnonymous)
+      setSavedProfile(profile)
+
+      // Pre-fill only if the field is still empty
+      if (profile.name)           setClaimerName(prev           => prev || profile.name!)
+      if (profile.station)        setClaimerStation(prev        => prev || profile.station!)
+      if (profile.employeeNumber) setClaimerEmployeeNumber(prev => prev || profile.employeeNumber!)
     })
   }, [])
 
-  // Load available stations
   useEffect(() => {
     getStations().then(setStations)
   }, [])
 
+  // ─── "Save as default?" toast ─────────────────────────────────────────────
+  function promptSaveAsDefault(uid: string, isAnonymous: boolean) {
+    const newName   = claimerName.trim()
+    const newStation = claimerStation
+    const newCode    = claimerEmployeeNumber
+
+    const unchanged =
+      newName    === (savedProfile.name           || '') &&
+      newStation === (savedProfile.station        || '') &&
+      newCode    === (savedProfile.employeeNumber || '')
+
+    if (unchanged) return
+
+    toast(
+      (t) => (
+        <div className="flex items-center gap-3" dir="rtl">
+          <span className="text-sm font-medium">حفظ كافتراضي؟</span>
+          <div className="flex gap-1.5">
+            <button
+              onClick={async () => {
+                await saveUserProfile(uid, isAnonymous, {
+                  name:           newName,
+                  employeeNumber: newCode,
+                  station:        newStation,
+                })
+                toast.dismiss(t.id)
+                toast.success('تم تحديث الملف الشخصي')
+              }}
+              className="bg-[#1B3A6B] text-white text-xs px-3 py-1.5 rounded-lg font-medium"
+            >
+              نعم
+            </button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="bg-gray-100 text-gray-600 text-xs px-3 py-1.5 rounded-lg font-medium"
+            >
+              لا
+            </button>
+          </div>
+        </div>
+      ),
+      { duration: 8000 },
+    )
+  }
+
   async function handleConfirm() {
     if (!selectedDay || !claimerStation || !claimerName.trim()) return
 
-    // Block claim if claimer is from the same center AND their selected replacement
-    // day matches any of the owner's requested days off (same date + same shift)
+    // Block claim if claimer is from the same center AND same shift as owner's daysOff
     if (
       claimerStation === offer.ownerStation &&
       offer.daysOff.some(d => d.date === selectedDay.date && d.shift === selectedDay.shift)
@@ -126,13 +174,12 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
     }
 
     setLoading(true)
-    // Wrap the chosen (date + shift) pair into the ReplacementDay shape expected by Firestore
     const chosenReplacementDay: ReplacementDay = { date: selectedDay.date, shifts: [selectedDay.shift] }
     try {
       await selectOfferDirect(
         offer.id!,
         user?.uid ?? '',
-        user?.displayName || '',
+        '',   // selectorName — legacy field, not used in new flow
         '',   // code — not required from selector
         '',   // legacy selectorStation — not used in new flow
         chosenReplacementDay,
@@ -142,6 +189,10 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
       )
       setDone(true)
       toast.success('تم اختيار العرض بنجاح ✅')
+
+      // Ask whether to persist as profile defaults
+      if (user) promptSaveAsDefault(user.uid, user.isAnonymous)
+
       setTimeout(onClose, 1400)
     } catch (err: any) {
       toast.error(err?.message || 'حدث خطأ، يرجى المحاولة مجدداً')
@@ -203,10 +254,10 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
               <p className="text-sm text-gray-500">سيتواصل معك صاحب العرض للتأكيد</p>
             </div>
           ) : (
-            /* ── Claim form — available to all users ───────────────── */
+            /* ── Claim form ────────────────────────────────────────── */
             <div className="space-y-5">
 
-              {/* Claimer name — pre-filled from auth, always editable */}
+              {/* Claimer name — pre-filled from profile, always editable */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">
                   الاسم <span className="text-red-500">*</span>
@@ -223,12 +274,11 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                 )}
               </div>
 
-              {/* Replacement day picker — claimer must choose exactly ONE date+shift combination */}
+              {/* Replacement day picker */}
               <div>
                 <p className="text-xs text-gray-500 mb-2">
                   اختر <span className="font-semibold text-[#1B3A6B]">مناوبة بديلة واحدة</span> من الخيارات التي يعرضها صاحب العرض
                 </p>
-                {/* Scrollable list — only this section scrolls */}
                 <div className="max-h-48 overflow-y-auto flex flex-col gap-1 rounded-xl border border-gray-200 p-1">
                   {shiftOptions.map((opt, i) => {
                     const isSelected = selectedDay?.date === opt.date && selectedDay?.shift === opt.shift
@@ -244,7 +294,6 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                             : 'bg-white border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50/50'
                         )}
                       >
-                        {/* Radio indicator */}
                         <span className={clsx(
                           'flex-shrink-0 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center',
                           isSelected ? 'border-green-500' : 'border-gray-300'
@@ -269,7 +318,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                 )}
               </div>
 
-              {/* Station / Location — required */}
+              {/* Station / Location — pre-filled from profile, required */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">
                   المركز / الموقع <span className="text-red-500">*</span>
@@ -289,7 +338,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
                 )}
               </div>
 
-              {/* Employee Number — optional */}
+              {/* Employee Number — pre-filled from profile, optional */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">
                   الرقم الوظيفي <span className="text-gray-400 font-normal">(اختياري)</span>
@@ -321,7 +370,7 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
           )}
         </div>
 
-        {/* Sticky footer — confirm/cancel buttons */}
+        {/* Sticky footer */}
         <div
           className="flex-shrink-0 px-5 pt-3 bg-white border-t border-gray-100"
           style={{ paddingBottom: 'max(1.25rem, var(--safe-bottom))' }}

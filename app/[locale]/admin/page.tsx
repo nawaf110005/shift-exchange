@@ -12,7 +12,7 @@ import {
   Offer, Station, OfferStatus, UserProfile,
 } from '@/lib/firebase/firestore'
 import { exportOffersToExcel } from '@/lib/utils/exportExcel'
-import { statusColor, statusLabel } from '@/lib/utils/validation'
+// statusColor / statusLabel moved to exportExcel — not needed in admin table
 import {
   ShieldCheck, LogOut, Download, Trash2, CheckCircle, Loader2, Plus,
   Pencil, Check, X, Eye, EyeOff, Search, Shield, ShieldOff, RefreshCw,
@@ -191,6 +191,7 @@ export default function AdminPage() {
 
   async function handleSaveStation() {
     if (!editingStation || !editingStation.name.trim()) return
+    if (!confirm(`هل أنت متأكد من تغيير اسم المركز إلى "${editingStation.name.trim()}"؟`)) return
     setStationSaving(true)
     try {
       await updateStation(editingStation.id, editingStation.name.trim())
@@ -205,6 +206,8 @@ export default function AdminPage() {
   }
 
   async function handleToggleStation(id: string, active: boolean) {
+    const msg = active ? 'هل أنت متأكد من تفعيل هذا المركز؟' : 'هل أنت متأكد من تعطيل هذا المركز؟'
+    if (!confirm(msg)) return
     try {
       await toggleStation(id, active)
       getStations(false).then(setStations)
@@ -226,6 +229,7 @@ export default function AdminPage() {
   }
 
   async function handleGrantAdmin(email: string, uid: string) {
+    if (!confirm(`هل أنت متأكد من منح صلاحية الإدارة لـ ${email}؟`)) return
     setAdminLoading(prev => ({ ...prev, [uid]: true }))
     try {
       await updateDoc(doc(db, 'userProfiles', uid), {
@@ -362,69 +366,101 @@ export default function AdminPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[#1B3A6B] text-white">
-                {['صاحب العرض','رقم الموظف','المركز','أيام الطلب','البديل','المختار','رقمه','الحالة','إجراءات'].map(h => (
-                  <th key={h} className="text-right px-4 py-3 font-medium whitespace-nowrap">{h}</th>
+                {[
+                  'صاحب العرض',
+                  'رقم الموظف',
+                  'المركز',
+                  'يوم الطلب',
+                  'البديل',
+                  'رقم الموظف (البديل)',
+                  'يوم التبديل',
+                  'إجراءات',
+                ].map(h => (
+                  <th key={h} className="text-right px-3 py-3 font-medium whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {offers.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-10 text-gray-400">لا توجد عروض</td></tr>
+                <tr><td colSpan={8} className="text-center py-10 text-gray-400">لا توجد عروض</td></tr>
               ) : offers.map((offer, i) => (
                 <tr key={offer.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-4 py-3 font-medium text-[#1B3A6B]">{offer.ownerName}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-500" dir="ltr">{offer.ownerCode}</td>
-                  <td className="px-4 py-3">{offer.ownerStation}</td>
-                  <td className="px-4 py-3">
+
+                  {/* 1. صاحب العرض */}
+                  <td className="px-3 py-2.5 font-medium text-[#1B3A6B] whitespace-nowrap">{offer.ownerName}</td>
+
+                  {/* 2. رقم الموظف */}
+                  <td className="px-3 py-2.5 font-mono text-xs text-gray-500" dir="ltr">{offer.ownerCode}</td>
+
+                  {/* 3. المركز */}
+                  <td className="px-3 py-2.5 text-sm text-gray-700 whitespace-nowrap">{offer.ownerStation}</td>
+
+                  {/* 4. يوم الطلب — abbrev letter + Arabic month + day */}
+                  <td className="px-3 py-2.5">
                     <div className="space-y-0.5">
-                      {offer.daysOff.map((d,j) => (
-                        <div key={j} className="text-xs text-gray-600">{d.date} · {{day:'ص',night:'م',overlap:'ت'}[d.shift]}</div>
-                      ))}
+                      {offer.daysOff.map((d, j) => {
+                        const [, mm, dd] = d.date.split('-')
+                        const monthNames: Record<string, string> = {
+                          '01':'يناير','02':'فبراير','03':'مارس','04':'أبريل',
+                          '05':'مايو','06':'يونيو','07':'يوليو','08':'أغسطس',
+                          '09':'سبتمبر','10':'أكتوبر','11':'نوفمبر','12':'ديسمبر',
+                        }
+                        const shiftAbbr: Record<string, string> = {day:'ص',night:'م',overlap:'أ',late:'ل'}
+                        return (
+                          <div key={j} className="text-xs font-medium text-gray-800 whitespace-nowrap">
+                            <span className="text-[#1B3A6B] font-bold ml-1">{shiftAbbr[d.shift] ?? d.shift}</span>
+                            {monthNames[mm]} {parseInt(dd)}
+                          </div>
+                        )
+                      })}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
-                    <div>{offer.replacementDays.length} يوم</div>
-                    {offer.selectedReplacementDay && (
-                      <div className="mt-1 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5 text-[10px] text-blue-700 font-medium">
-                        ✔ {offer.selectedReplacementDay.date}
-                        {offer.selectedReplacementDay.shifts?.length > 0 && (
-                          <span className="mr-1 font-normal">
-                            · {offer.selectedReplacementDay.shifts.map(s => ({day:'ص',night:'م',overlap:'ت'} as Record<string,string>)[s] ?? s).join('/')}
-                          </span>
-                        )}
-                        {offer.ownerStation && (
-                          <span className="block font-normal text-blue-600 mt-0.5">{offer.ownerStation}</span>
-                        )}
-                      </div>
-                    )}
+
+                  {/* 5. البديل */}
+                  <td className="px-3 py-2.5 text-sm whitespace-nowrap">
+                    {offer.claimerName || offer.selectorName || <span className="text-gray-300">—</span>}
                   </td>
-                  <td className="px-4 py-3">
-                    <div>{offer.claimerName || offer.selectorName || <span className="text-gray-300">—</span>}</div>
-                    {(offer.claimerStation || offer.selectorStation) && (
-                      <div className="text-[10px] text-gray-400 mt-0.5">{offer.claimerStation || offer.selectorStation}</div>
-                    )}
+
+                  {/* 6. رقم الموظف (البديل) */}
+                  <td className="px-3 py-2.5 font-mono text-xs text-gray-500" dir="ltr">
+                    {offer.claimerEmployeeNumber || offer.selectorCode || '—'}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs" dir="ltr">{offer.claimerEmployeeNumber || offer.selectorCode || '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="space-y-1">
-                      <span className={clsx('text-xs font-medium px-2 py-1 rounded-full', statusColor(offer.status))}>
-                        {statusLabel(offer.status)}
-                      </span>
-                      {offer.status === 'confirmed' && offer.confirmedByName && (
-                        <div className="text-[10px] text-gray-400 mt-1">
-                          ✅ {offer.confirmedByName}
-                          {offer.confirmedByEmail && <><br />{offer.confirmedByEmail}</>}
+
+                  {/* 7. يوم التبديل — selectedReplacementDay */}
+                  <td className="px-3 py-2.5">
+                    {offer.selectedReplacementDay ? (() => {
+                      const [, mm, dd] = offer.selectedReplacementDay.date.split('-')
+                      const monthNames: Record<string, string> = {
+                        '01':'يناير','02':'فبراير','03':'مارس','04':'أبريل',
+                        '05':'مايو','06':'يونيو','07':'يوليو','08':'أغسطس',
+                        '09':'سبتمبر','10':'أكتوبر','11':'نوفمبر','12':'ديسمبر',
+                      }
+                      const shiftAbbr: Record<string, string> = {day:'ص',night:'م',overlap:'أ',late:'ل'}
+                      const shifts = offer.selectedReplacementDay.shifts ?? []
+                      return (
+                        <div className="text-xs font-medium text-gray-800 whitespace-nowrap">
+                          {shifts.length > 0 && (
+                            <span className="text-[#1B3A6B] font-bold ml-1">
+                              {shifts.map(s => shiftAbbr[s] ?? s).join('/')}
+                            </span>
+                          )}
+                          {monthNames[mm]} {parseInt(dd)}
                         </div>
-                      )}
-                    </div>
+                      )
+                    })() : (
+                      <span className="text-gray-300">—</span>
+                    )}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 flex-wrap">
+
+                  {/* 8. إجراءات */}
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {offer.status === 'selected' && (
                         <button
                           onClick={() => {
                             const saved = typeof window !== 'undefined' ? (localStorage.getItem('admin_confirm_name') || '').trim() : ''
                             if (saved.length >= 3) {
+                              if (!confirm('هل أنت متأكد من تأكيد هذا التبديل؟')) return
                               handleStatusChange(offer.id!, 'confirmed', saved)
                             } else {
                               setConfirmNameInput('')

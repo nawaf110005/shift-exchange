@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import { getMessages } from 'next-intl/server'
 import { Toaster } from 'react-hot-toast'
 import Navbar from '@/components/ui/Navbar'
+import ProfileInitializer from '@/components/ui/ProfileInitializer'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -67,6 +68,7 @@ export default async function RootLayout({
       <body className="bg-gray-50 font-arabic min-h-screen">
         <NextIntlClientProvider messages={messages}>
           <Navbar />
+          <ProfileInitializer />
           {/* page-content adds bottom padding so content isn't hidden behind mobile tab bar */}
           <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 page-content">
             {children}

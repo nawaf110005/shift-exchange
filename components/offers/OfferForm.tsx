@@ -6,6 +6,12 @@ import {
   createOffer, updateOffer, getStations, Station,
   getActiveOfferForMonth, getOffersForMonth, computeMatchScore,
 } from '@/lib/firebase/firestore'
+import {
+  UserProfileData,
+  loadUserProfile,
+  saveUserProfile,
+  isProfileComplete,
+} from '@/lib/firebase/userProfile'
 import { validateEmployeeCode, validateDaysOff, validateReplacementDays } from '@/lib/utils/validation'
 import { X, Plus, Trash2, Loader2, Sparkles, MapPin, ArrowLeftCircle, AlertTriangle } from 'lucide-react'
 import { usePathname } from 'next/navigation'
@@ -14,9 +20,9 @@ import SelectOfferModal from '@/components/offers/SelectOfferModal'
 import clsx from 'clsx'
 
 const SHIFTS: { value: ShiftType; label: string }[] = [
-  { value: 'day',     label: 'صباحي'  },
-  { value: 'night',   label: 'مسائي'  },
-  { value: 'overlap', label: 'أوفرلاب'  },
+  { value: 'day',     label: 'صباحي'   },
+  { value: 'night',   label: 'مسائي'   },
+  { value: 'overlap', label: 'أوفرلاب' },
 ]
 
 interface MatchResult {
@@ -25,10 +31,10 @@ interface MatchResult {
 }
 
 interface Props {
-  uid:          string
-  displayName?: string | null  // from Google account
-  offer?:       Offer | null
-  onClose:      () => void
+  uid:         string
+  isAnonymous: boolean   // anonymous user → profile stored in localStorage
+  offer?:      Offer | null
+  onClose:     () => void
 }
 
 // ─── Match score colour ───────────────────────────────────────────────────────
@@ -41,22 +47,25 @@ function scoreColor(score: number) {
 // ─── Shift label map ──────────────────────────────────────────────────────────
 const shiftLabel: Record<string, string> = { day: 'صباحي', night: 'مسائي', overlap: 'أوفرلاب' }
 
-export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
+export default function OfferForm({ uid, isAnonymous, offer, onClose }: Props) {
   const isEdit = !!offer
 
-  const [name,            setName]            = useState(offer?.ownerName    || displayName || '')
+  // Pre-fill from the offer when editing; will be overridden by profile for new offers
+  const [name,            setName]            = useState(offer?.ownerName    || '')
   const [code,            setCode]            = useState(offer?.ownerCode    || '')
   const [station,         setStation]         = useState(offer?.ownerStation || '')
-  // Always exactly one day off — take the first entry from existing offer, or a blank default
   const [daysOff,         setDaysOff]         = useState<DayOff[]>([offer?.daysOff?.[0] ?? { date: '', shift: 'day' }])
   const [replacementDays, setReplacementDays] = useState<ReplacementDay[]>(offer?.replacementDays || [{ date: '', shifts: ['day'] }])
   const [stations,        setStations]        = useState<Station[]>([])
   const [loading,         setLoading]         = useState(false)
   const [duplicateOffer,  setDuplicateOffer]  = useState<Offer | null>(null)
 
+  // Saved profile — used to detect when form values differ (to ask "save as default?")
+  const [savedProfile, setSavedProfile] = useState<Partial<UserProfileData>>({})
+
   // Derive locale from pathname for the "View My Offers" link
-  const pathname   = usePathname()
-  const locale     = pathname.split('/')[1] || 'ar'
+  const pathname    = usePathname()
+  const locale      = pathname.split('/')[1] || 'ar'
   const myOffersUrl = `/${locale}/my-offers`
 
   // Match state
@@ -69,9 +78,22 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
   const today   = new Date().toISOString().split('T')[0]
   const maxDate = (() => { const d = new Date(); d.setMonth(d.getMonth() + 2); return d.toISOString().split('T')[0] })()
 
+  // ─── Load stations ────────────────────────────────────────────────────────
   useEffect(() => {
     getStations().then(setStations)
   }, [])
+
+  // ─── Load user profile (new offers only — edits keep the saved values) ────
+  useEffect(() => {
+    if (isEdit) return   // editing: keep the offer's stored values
+    loadUserProfile(uid, isAnonymous).then(profile => {
+      setSavedProfile(profile)
+      // Only pre-fill if the field hasn't already been set
+      if (profile.name)           setName(prev    => prev    || profile.name!)
+      if (profile.employeeNumber) setCode(prev    => prev    || profile.employeeNumber!)
+      if (profile.station)        setStation(prev => prev    || profile.station!)
+    })
+  }, [uid, isAnonymous, isEdit])
 
   // ─── Live match lookup ────────────────────────────────────────────────────
   const refreshMatches = useCallback(async (days: DayOff[], replacements: ReplacementDay[]) => {
@@ -83,8 +105,7 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
     setMatchLoading(true)
     try {
       const allOffers = await getOffersForMonth(month)
-      // Exclude own offers
-      const others = allOffers.filter(o => o.ownerUid !== uid && o.id !== offer?.id)
+      const others    = allOffers.filter(o => o.ownerUid !== uid && o.id !== offer?.id)
 
       const scored: MatchResult[] = others
         .map(o => ({ offer: o, score: computeMatchScore(days, replacements, o) }))
@@ -137,14 +158,58 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
     }))
   }
 
+  // ─── "Save as default?" toast ─────────────────────────────────────────────
+  function promptSaveAsDefault(newName: string, newCode: string, newStation: string) {
+    const unchanged =
+      newName    === (savedProfile.name           || '') &&
+      newCode    === (savedProfile.employeeNumber || '') &&
+      newStation === (savedProfile.station        || '')
+
+    if (unchanged) return   // nothing changed — skip the prompt
+
+    toast(
+      (t) => (
+        <div className="flex items-center gap-3" dir="rtl">
+          <span className="text-sm font-medium">حفظ كافتراضي؟</span>
+          <div className="flex gap-1.5">
+            <button
+              onClick={async () => {
+                await saveUserProfile(uid, isAnonymous, {
+                  name:           newName,
+                  employeeNumber: newCode,
+                  station:        newStation,
+                })
+                toast.dismiss(t.id)
+                toast.success('تم تحديث الملف الشخصي')
+              }}
+              className="bg-[#1B3A6B] text-white text-xs px-3 py-1.5 rounded-lg font-medium"
+            >
+              نعم
+            </button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="bg-gray-100 text-gray-600 text-xs px-3 py-1.5 rounded-lg font-medium"
+            >
+              لا
+            </button>
+          </div>
+        </div>
+      ),
+      { duration: 8000 },
+    )
+  }
+
   // ─── Core save logic (shared by submit and "proceed anyway") ─────────────
   async function doSave(offerMonth: string) {
     setLoading(true)
     try {
+      const trimmedName = name.trim()
+      const trimmedCode = code.trim()
+
       if (isEdit && offer?.id) {
         await updateOffer(offer.id, {
-          ownerName:       name.trim(),
-          ownerCode:       code.trim(),
+          ownerName:       trimmedName,
+          ownerCode:       trimmedCode,
           ownerStation:    station,
           daysOff,
           replacementDays,
@@ -153,8 +218,8 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
       } else {
         await createOffer({
           ownerUid:        uid,
-          ownerName:       name.trim(),
-          ownerCode:       code.trim(),
+          ownerName:       trimmedName,
+          ownerCode:       trimmedCode,
           ownerStation:    station,
           status:          'in_progress',
           offerMonth,
@@ -163,6 +228,10 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
         })
         toast.success('تم إنشاء العرض بنجاح ✅')
       }
+
+      // Ask whether to persist the entered values as profile defaults
+      promptSaveAsDefault(trimmedName, trimmedCode, station)
+
       onClose()
     } catch {
       toast.error('حدث خطأ، يرجى المحاولة مجدداً')
@@ -184,23 +253,22 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
     if (daysErr) { toast.error(daysErr); return }
 
     const offerMonth = daysOff[0].date.substring(0, 7)
-    const replErr = validateReplacementDays(replacementDays, offerMonth)
+    const replErr    = validateReplacementDays(replacementDays, offerMonth)
     if (replErr) { toast.error(replErr); return }
 
     // On a new offer: check for an existing offer in the same month.
-    // If found, show a warning banner — don't block outright.
     if (!isEdit && !duplicateOffer) {
       const existing = await getActiveOfferForMonth(uid, offerMonth)
       if (existing) {
         setDuplicateOffer(existing)
-        return   // wait for user to acknowledge the warning
+        return
       }
     }
 
     await doSave(offerMonth)
   }
 
-  // ─── "Proceed anyway" handler (called from the duplicate warning banner) ──
+  // ─── "Proceed anyway" handler ─────────────────────────────────────────────
   async function handleProceedAnyway() {
     setDuplicateOffer(null)
     const offerMonth = daysOff[0].date.substring(0, 7)
