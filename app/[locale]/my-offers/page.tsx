@@ -262,7 +262,9 @@ export default function MyOffersPage() {
                     </div>
 
                     {/* مركزي */}
-                    <p className="text-[11px] text-red-400">{offer.ownerStation}</p>
+                    {offer.ownerStation && (
+                      <p className="text-[11px] text-red-500 font-semibold">📍 مركزي: {offer.ownerStation}</p>
+                    )}
                   </div>
 
                   {/* ── Divider with بدال ────────────────────────── */}
@@ -275,10 +277,12 @@ export default function MyOffersPage() {
                   {/* ── Their side: green accent (only if claimed) ─ */}
                   {isClaimed ? (
                     <div className="bg-green-50 border border-green-100 rounded-xl p-3">
-                      <div className="flex items-center gap-1.5 mb-2">
+                      <div className="flex items-center gap-1.5 mb-1">
                         <span className="text-sm font-bold text-gray-800">{otherName}</span>
-                        {otherStation && <span className="text-[11px] text-gray-400">· {otherStation}</span>}
                       </div>
+                      {otherStation && (
+                        <p className="text-[11px] text-green-600 font-semibold mb-2">📍 مركزه: {otherStation}</p>
+                      )}
                       <p className="text-[11px] font-bold text-green-500 mb-1.5">يوم التبديل</p>
                       {repDay ? (
                         <span className="text-xs bg-green-600 text-white px-2.5 py-1 rounded-full font-semibold">
@@ -291,6 +295,15 @@ export default function MyOffersPage() {
                   ) : (
                     <div className="rounded-xl border border-dashed border-gray-200 p-3 text-center">
                       <p className="text-xs text-gray-400">في انتظار من يختار</p>
+                    </div>
+                  )}
+
+                  {/* ── Swap summary notice (only when claimed) ──── */}
+                  {isClaimed && otherStation && repDay && (
+                    <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 text-center">
+                      <p className="text-xs font-bold text-blue-800">
+                        🗓️ ستداوم في <span className="underline underline-offset-2">{otherStation}</span> يوم {repDay.date}
+                      </p>
                     </div>
                   )}
 

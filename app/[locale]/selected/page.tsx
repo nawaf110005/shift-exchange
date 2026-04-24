@@ -171,7 +171,9 @@ export default function SelectedOffersPage() {
                     </div>
 
                     {/* مركز صاحب العرض */}
-                    <p className="text-[11px] text-red-400">{offer.ownerStation}</p>
+                    {offer.ownerStation && (
+                      <p className="text-[11px] text-red-500 font-semibold">📍 مركزه: {offer.ownerStation}</p>
+                    )}
                   </div>
 
                   {/* ── Divider with بدال ────────────────────────── */}
@@ -183,10 +185,13 @@ export default function SelectedOffersPage() {
 
                   {/* ── My side (current user as claimer): green ── */}
                   <div className="bg-green-50 border border-green-100 rounded-xl p-3">
-                    <div className="flex items-center gap-1.5 mb-2">
+                    <div className="flex items-center gap-1.5 mb-1">
                       <span className="text-[11px] text-gray-400 font-medium bg-green-100 px-1.5 py-0.5 rounded">أنا</span>
                       <span className="text-sm font-bold text-gray-800">{user?.displayName || '—'}</span>
                     </div>
+                    {(offer.claimerStation || offer.selectorStation) && (
+                      <p className="text-[11px] text-green-600 font-semibold mb-2">📍 مركزي: {offer.claimerStation || offer.selectorStation}</p>
+                    )}
                     <p className="text-[11px] font-bold text-green-500 mb-1.5">يوم التبديل</p>
                     {repDay ? (
                       <span className="text-xs bg-green-600 text-white px-2.5 py-1 rounded-full font-semibold">
@@ -196,6 +201,16 @@ export default function SelectedOffersPage() {
                       <span className="text-xs text-gray-400">—</span>
                     )}
                   </div>
+
+                  {/* ── Swap summary notice ───────────────────────── */}
+                  {offer.ownerStation && offer.daysOff?.length > 0 && (
+                    <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 text-center">
+                      <p className="text-xs font-bold text-blue-800">
+                        🗓️ ستداوم في <span className="underline underline-offset-2">{offer.ownerStation}</span>{' '}
+                        يوم {offer.daysOff.map(d => d.date).join(' و')}
+                      </p>
+                    </div>
+                  )}
 
                   <p className="text-[11px] text-gray-300 mt-3">
                     {offer.createdAt ? ((d: Date) => `${d.getDate()} ${['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'][d.getMonth()]} ${d.getFullYear()}`)((offer.createdAt as any).toDate()) : ''}
