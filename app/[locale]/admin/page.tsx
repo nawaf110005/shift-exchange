@@ -17,14 +17,9 @@ export default function AdminPage() {
   const [offers,     setOffers]     = useState<Offer[]>([])
   const [stations,   setStations]   = useState<Station[]>([])
   const [newStation, setNewStation] = useState('')
-<<<<<<< HEAD
   const [confirming, setConfirming] = useState<Record<string, boolean>>({})
 
   // Filters — default: current month, all action-needed statuses (selected + confirmed)
-=======
-
-  // Filters — default: current month, show selected + confirmed (action-needed offers)
->>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   const [filterStatus,  setFilterStatus]  = useState<OfferStatus | ''>('')
   const [filterStation, setFilterStation] = useState('')
   const [filterMonth,   setFilterMonth]   = useState(() => {
@@ -75,7 +70,6 @@ export default function AdminPage() {
   }
 
   async function handleStatusChange(offerId: string, newStatus: OfferStatus) {
-<<<<<<< HEAD
     if (newStatus === 'confirmed') {
       setConfirming(prev => ({ ...prev, [offerId]: true }))
     }
@@ -86,11 +80,6 @@ export default function AdminPage() {
           user?.displayName ?? undefined,
           user?.email ?? undefined,
         )
-=======
-    try {
-      if (newStatus === 'confirmed') {
-        await ownerAcceptOffer(offerId)
->>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
       } else {
         await updateOffer(offerId, { status: newStatus })
       }
@@ -98,11 +87,8 @@ export default function AdminPage() {
       loadOffers()
     } catch (err: any) {
       toast.error(err.message || 'حدث خطأ')
-<<<<<<< HEAD
     } finally {
       setConfirming(prev => { const n = { ...prev }; delete n[offerId]; return n })
-=======
->>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
     }
   }
 
@@ -220,22 +206,14 @@ export default function AdminPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[#1B3A6B] text-white">
-<<<<<<< HEAD
                 {['صاحب العرض','رقم الموظف','المحطة','أيام الطلب','البديل','المختار','رقمه','الحالة','إجراءات'].map(h => (
-=======
-                {['صاحب العرض','رقم الموظف','المحطة','أيام الطلب','البديل','المختار','رقمه','محطته','الحالة','إجراءات'].map(h => (
->>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
                   <th key={h} className="text-right px-4 py-3 font-medium whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {offers.length === 0 ? (
-<<<<<<< HEAD
                 <tr><td colSpan={9} className="text-center py-10 text-gray-400">لا توجد عروض</td></tr>
-=======
-                <tr><td colSpan={10} className="text-center py-10 text-gray-400">لا توجد عروض</td></tr>
->>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
               ) : offers.map((offer, i) => (
                 <tr key={offer.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   <td className="px-4 py-3 font-medium text-[#1B3A6B]">{offer.ownerName}</td>
@@ -251,7 +229,6 @@ export default function AdminPage() {
                   <td className="px-4 py-3 text-xs text-gray-500">{offer.replacementDays.length} يوم</td>
                   <td className="px-4 py-3">{offer.selectorName || <span className="text-gray-300">—</span>}</td>
                   <td className="px-4 py-3 font-mono text-xs" dir="ltr">{offer.selectorCode || '—'}</td>
-<<<<<<< HEAD
                   <td className="px-4 py-3">
                     <div className="space-y-1">
                       <span className={clsx('text-xs font-medium px-2 py-1 rounded-full', statusColor(offer.status))}>
@@ -264,18 +241,10 @@ export default function AdminPage() {
                         </div>
                       )}
                     </div>
-=======
-                  <td className="px-4 py-3 text-xs">{offer.selectorStation || '—'}</td>
-                  <td className="px-4 py-3">
-                    <span className={clsx('text-xs font-medium px-2 py-1 rounded-full', statusColor(offer.status))}>
-                      {statusLabel(offer.status)}
-                    </span>
->>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {offer.status === 'selected' && (
-<<<<<<< HEAD
                         <button
                           onClick={() => handleStatusChange(offer.id!, 'confirmed')}
                           disabled={!!confirming[offer.id!]}
@@ -284,11 +253,6 @@ export default function AdminPage() {
                             ? <Loader2 className="w-3 h-3 animate-spin" />
                             : <CheckCircle className="w-3 h-3" />}
                           تأكيد
-=======
-                        <button onClick={() => handleStatusChange(offer.id!, 'confirmed')}
-                          className="flex items-center gap-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded-md transition-colors">
-                          <CheckCircle className="w-3 h-3" /> تأكيد
->>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
                         </button>
                       )}
                       {offer.status !== 'confirmed' && (

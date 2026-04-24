@@ -2,11 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getSelectedOffers, cancelSelectionDirect, Offer } from '@/lib/firebase/firestore'
-<<<<<<< HEAD
 import { onAuth, signInWithGoogle, getCachedUid } from '@/lib/firebase/auth'
-=======
-import { onAuth, signInWithGoogle } from '@/lib/firebase/auth'
->>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
 import { statusColor, statusLabel } from '@/lib/utils/validation'
 import { Bookmark, XCircle, Loader2, LogIn } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -16,17 +12,11 @@ import clsx from 'clsx'
 import { User } from 'firebase/auth'
 
 export default function SelectedOffersPage() {
-<<<<<<< HEAD
   const hasCachedUser = typeof window !== 'undefined' ? !!getCachedUid() : false
 
   const [offers,    setOffers]    = useState<Offer[]>([])
   const [loading,   setLoading]   = useState(true)
   const [user,      setUser]      = useState<User | null | undefined>(hasCachedUser ? undefined : null)
-=======
-  const [offers,    setOffers]    = useState<Offer[]>([])
-  const [loading,   setLoading]   = useState(true)
-  const [user,      setUser]      = useState<User | null | undefined>(undefined)
->>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
   const [canceling, setCanceling] = useState<string | null>(null)
   const [signingIn, setSigningIn] = useState(false)
 
@@ -148,11 +138,7 @@ export default function SelectedOffersPage() {
 
                   {offer.status === 'confirmed' && (
                     <div className="mt-3 p-3 bg-green-50 border border-green-100 rounded-lg">
-<<<<<<< HEAD
                       <p className="text-xs text-green-700 font-medium">✅ تم تأكيد هذا التبادل من قِبل الإدارة</p>
-=======
-                      <p className="text-xs text-green-700 font-medium">✅ تم تأكيد هذا التبادل من قِبل صاحب العرض</p>
->>>>>>> 18ca2618bcc83ce8cf18fb87381ce48889546a7f
                     </div>
                   )}
 
