@@ -148,6 +148,20 @@ export async function hasActiveOfferForMonth(uid: string, offerMonth: string): P
   return !snap.empty
 }
 
+/** Return the first active offer a user has for a given month (or null if none) */
+export async function getActiveOfferForMonth(uid: string, offerMonth: string): Promise<Offer | null> {
+  const q = query(
+    offersCol(),
+    where('ownerUid', '==', uid),
+    where('offerMonth', '==', offerMonth),
+    where('status', 'in', ['in_progress', 'selected']),
+    limit(1)
+  )
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  return { id: snap.docs[0].id, ...snap.docs[0].data() } as Offer
+}
+
 /** Create a new offer */
 export async function createOffer(offer: Omit<Offer, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   const ref = await addDoc(offersCol(), {

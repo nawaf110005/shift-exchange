@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Offer, DayOff, ReplacementDay, ShiftType,
   createOffer, updateOffer, getStations, Station,
-  hasActiveOfferForMonth, getOffersForMonth, computeMatchScore,
+  getActiveOfferForMonth, getOffersForMonth, computeMatchScore,
 } from '@/lib/firebase/firestore'
 import { validateEmployeeCode, validateDaysOff, validateReplacementDays } from '@/lib/utils/validation'
-import { X, Plus, Trash2, Loader2, Sparkles, MapPin, ArrowLeftCircle } from 'lucide-react'
+import { X, Plus, Trash2, Loader2, Sparkles, MapPin, ArrowLeftCircle, AlertTriangle } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 import toast from 'react-hot-toast'
 import SelectOfferModal from '@/components/offers/SelectOfferModal'
 import clsx from 'clsx'
@@ -51,6 +52,12 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
   const [replacementDays, setReplacementDays] = useState<ReplacementDay[]>(offer?.replacementDays || [{ date: '', shifts: ['day'] }])
   const [stations,        setStations]        = useState<Station[]>([])
   const [loading,         setLoading]         = useState(false)
+  const [duplicateOffer,  setDuplicateOffer]  = useState<Offer | null>(null)
+
+  // Derive locale from pathname for the "View My Offers" link
+  const pathname   = usePathname()
+  const locale     = pathname.split('/')[1] || 'ar'
+  const myOffersUrl = `/${locale}/my-offers`
 
   // Match state
   const [matches,        setMatches]        = useState<MatchResult[]>([])
@@ -91,6 +98,11 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
     }
   }, [uid, offer?.id])
 
+  // Reset duplicate warning if the user changes the offer month
+  useEffect(() => {
+    setDuplicateOffer(null)
+  }, [daysOff[0]?.date?.substring(0, 7)])  // eslint-disable-line react-hooks/exhaustive-deps
+
   // Debounced trigger: re-check whenever daysOff or replacementDays change
   useEffect(() => {
     const timer = setTimeout(() => refreshMatches(daysOff, replacementDays), 600)
@@ -125,27 +137,8 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
     }))
   }
 
-  // ─── Submit ───────────────────────────────────────────────────────────────
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-
-    const codeErr = validateEmployeeCode(code)
-    if (codeErr) { toast.error(codeErr); return }
-    if (!name.trim()) { toast.error('الاسم مطلوب'); return }
-    if (!station)     { toast.error('المحطة مطلوبة'); return }
-
-    const daysErr = validateDaysOff(daysOff)
-    if (daysErr) { toast.error(daysErr); return }
-
-    const offerMonth = daysOff[0].date.substring(0, 7)
-    const replErr = validateReplacementDays(replacementDays, offerMonth)
-    if (replErr) { toast.error(replErr); return }
-
-    if (!isEdit) {
-      const duplicate = await hasActiveOfferForMonth(uid, offerMonth)
-      if (duplicate) { toast.error('لديك عرض نشط لهذا الشهر بالفعل'); return }
-    }
-
+  // ─── Core save logic (shared by submit and "proceed anyway") ─────────────
+  async function doSave(offerMonth: string) {
     setLoading(true)
     try {
       if (isEdit && offer?.id) {
@@ -176,6 +169,42 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
     } finally {
       setLoading(false)
     }
+  }
+
+  // ─── Submit ───────────────────────────────────────────────────────────────
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+
+    const codeErr = validateEmployeeCode(code)
+    if (codeErr) { toast.error(codeErr); return }
+    if (!name.trim()) { toast.error('الاسم مطلوب'); return }
+    if (!station)     { toast.error('المحطة مطلوبة'); return }
+
+    const daysErr = validateDaysOff(daysOff)
+    if (daysErr) { toast.error(daysErr); return }
+
+    const offerMonth = daysOff[0].date.substring(0, 7)
+    const replErr = validateReplacementDays(replacementDays, offerMonth)
+    if (replErr) { toast.error(replErr); return }
+
+    // On a new offer: check for an existing offer in the same month.
+    // If found, show a warning banner — don't block outright.
+    if (!isEdit && !duplicateOffer) {
+      const existing = await getActiveOfferForMonth(uid, offerMonth)
+      if (existing) {
+        setDuplicateOffer(existing)
+        return   // wait for user to acknowledge the warning
+      }
+    }
+
+    await doSave(offerMonth)
+  }
+
+  // ─── "Proceed anyway" handler (called from the duplicate warning banner) ──
+  async function handleProceedAnyway() {
+    setDuplicateOffer(null)
+    const offerMonth = daysOff[0].date.substring(0, 7)
+    await doSave(offerMonth)
   }
 
   const hasValidDays = daysOff.some(d => d.date)
@@ -366,6 +395,40 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ─── Duplicate-month warning banner ──────────────────────── */}
+          {duplicateOffer && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">
+                    لديك عرض لهذا الشهر بالفعل
+                  </p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    يمكنك الاطلاع على عرضك الحالي، أو المتابعة وإنشاء عرض جديد
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={myOffersUrl}
+                  className="flex-1 text-center text-xs font-medium border border-amber-300 text-amber-800 py-2.5 rounded-lg bg-white active:bg-amber-50 transition-colors min-h-[40px] flex items-center justify-center"
+                >
+                  عرض عروضي
+                </a>
+                <button
+                  type="button"
+                  onClick={handleProceedAnyway}
+                  disabled={loading}
+                  className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold bg-amber-500 text-white py-2.5 rounded-lg active:bg-amber-600 disabled:opacity-50 transition-colors min-h-[40px]"
+                >
+                  {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  متابعة على أي حال
+                </button>
+              </div>
             </div>
           )}
 
