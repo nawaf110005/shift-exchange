@@ -5,7 +5,8 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
 import { signInWithGoogle, logOut, isAdmin as checkAdmin, onAuth } from '@/lib/firebase/auth'
 import {
-  getAllOffersAdmin, updateOffer, deleteOffer, ownerAcceptOffer,
+  getAllOffersAdmin, updateOffer, deleteOffer, ownerAcceptOffer, cancelConfirmation,
+  adminRejectOffer, adminUnrejectOffer,
   getStations, createStation, updateStation, deleteStation, toggleStation,
   getAllUserProfiles,
   Offer, Station, OfferStatus, UserProfile,
@@ -15,6 +16,7 @@ import { statusColor, statusLabel } from '@/lib/utils/validation'
 import {
   ShieldCheck, LogOut, Download, Trash2, CheckCircle, Loader2, Plus,
   Pencil, Check, X, Eye, EyeOff, Search, Shield, ShieldOff, RefreshCw,
+  XCircle,
 } from 'lucide-react'
 import { User } from 'firebase/auth'
 import toast from 'react-hot-toast'
@@ -28,6 +30,8 @@ export default function AdminPage() {
   const [stations,       setStations]       = useState<Station[]>([])
   const [newStation,     setNewStation]     = useState('')
   const [confirming,     setConfirming]     = useState<Record<string, boolean>>({})
+  const [cancelling,     setCancelling]     = useState<Record<string, boolean>>({})
+  const [rejecting,      setRejecting]      = useState<Record<string, boolean>>({})
   const [editingStation, setEditingStation] = useState<{ id: string; name: string } | null>(null)
   const [stationSaving,  setStationSaving]  = useState(false)
   const [userProfiles,   setUserProfiles]   = useState<UserProfile[]>([])
@@ -122,6 +126,47 @@ export default function AdminPage() {
     }
   }
 
+  async function handleCancelConfirmation(offerId: string) {
+    if (!confirm('هل أنت متأكد من إلغاء التأكيد؟')) return
+    setCancelling(prev => ({ ...prev, [offerId]: true }))
+    try {
+      await cancelConfirmation(offerId)
+      toast.success('تم إلغاء التأكيد')
+      loadOffers()
+    } catch (err: any) {
+      toast.error(err.message || 'حدث خطأ')
+    } finally {
+      setCancelling(prev => { const n = { ...prev }; delete n[offerId]; return n })
+    }
+  }
+
+  async function handleAdminReject(offerId: string) {
+    if (!confirm('هل أنت متأكد من رفض هذا الطلب؟')) return
+    setRejecting(prev => ({ ...prev, [offerId]: true }))
+    try {
+      await adminRejectOffer(offerId)
+      toast.success('تم رفض العرض')
+      loadOffers()
+    } catch (err: any) {
+      toast.error(err.message || 'حدث خطأ')
+    } finally {
+      setRejecting(prev => { const n = { ...prev }; delete n[offerId]; return n })
+    }
+  }
+
+  async function handleAdminUnreject(offerId: string) {
+    setRejecting(prev => ({ ...prev, [offerId]: true }))
+    try {
+      await adminUnrejectOffer(offerId)
+      toast.success('تم إعادة العرض للقائمة')
+      loadOffers()
+    } catch (err: any) {
+      toast.error(err.message || 'حدث خطأ')
+    } finally {
+      setRejecting(prev => { const n = { ...prev }; delete n[offerId]; return n })
+    }
+  }
+
   async function handleDelete(offerId: string) {
     if (!confirm('هل أنت متأكد من حذف هذا العرض؟')) return
     try {
@@ -138,7 +183,7 @@ export default function AdminPage() {
     await createStation(newStation.trim())
     setNewStation('')
     getStations(false).then(setStations)
-    toast.success('تمت إضافة المحطة')
+    toast.success('تمت إضافة المركز')
   }
 
   async function handleSaveStation() {
@@ -148,7 +193,7 @@ export default function AdminPage() {
       await updateStation(editingStation.id, editingStation.name.trim())
       setEditingStation(null)
       getStations(false).then(setStations)
-      toast.success('تم تحديث اسم المحطة')
+      toast.success('تم تحديث اسم المركز')
     } catch {
       toast.error('حدث خطأ أثناء التحديث')
     } finally {
@@ -160,18 +205,18 @@ export default function AdminPage() {
     try {
       await toggleStation(id, active)
       getStations(false).then(setStations)
-      toast.success(active ? 'تم تفعيل المحطة' : 'تم تعطيل المحطة')
+      toast.success(active ? 'تم تفعيل المركز' : 'تم تعطيل المركز')
     } catch {
       toast.error('حدث خطأ')
     }
   }
 
   async function handleDeleteStation(id: string, name: string) {
-    if (!confirm(`هل أنت متأكد من حذف محطة "${name}"؟`)) return
+    if (!confirm(`هل أنت متأكد من حذف مركز "${name}"؟`)) return
     try {
       await deleteStation(id)
       getStations(false).then(setStations)
-      toast.success('تم حذف المحطة')
+      toast.success('تم حذف المركز')
     } catch {
       toast.error('حدث خطأ أثناء الحذف')
     }
@@ -251,7 +296,7 @@ export default function AdminPage() {
 
   // ── Admin Dashboard ─────────────────────────────────────────────
   return (
-    <div>
+    <div className="pb-28">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -286,10 +331,11 @@ export default function AdminPage() {
             <option value="in_progress">متاح</option>
             <option value="selected">تم الاختيار فقط</option>
             <option value="confirmed">مؤكد فقط</option>
+            <option value="rejected">مرفوض فقط</option>
           </select>
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1">المحطة</label>
+          <label className="block text-xs text-gray-500 mb-1">المركز</label>
           <select value={filterStation} onChange={e => setFilterStation(e.target.value)}
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2E86AB]">
             <option value="">الكل</option>
@@ -313,7 +359,7 @@ export default function AdminPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[#1B3A6B] text-white">
-                {['صاحب العرض','رقم الموظف','المحطة','أيام الطلب','البديل','المختار','رقمه','الحالة','إجراءات'].map(h => (
+                {['صاحب العرض','رقم الموظف','المركز','أيام الطلب','البديل','المختار','رقمه','الحالة','إجراءات'].map(h => (
                   <th key={h} className="text-right px-4 py-3 font-medium whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -333,9 +379,26 @@ export default function AdminPage() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{offer.replacementDays.length} يوم</td>
-                  <td className="px-4 py-3">{offer.selectorName || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-4 py-3 font-mono text-xs" dir="ltr">{offer.selectorCode || '—'}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500">
+                    <div>{offer.replacementDays.length} يوم</div>
+                    {offer.selectedReplacementDay && (
+                      <div className="mt-1 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5 text-[10px] text-blue-700 font-medium whitespace-nowrap">
+                        ✔ {offer.selectedReplacementDay.date}
+                        {offer.selectedReplacementDay.shifts?.length > 0 && (
+                          <span className="mr-1 font-normal">
+                            · {offer.selectedReplacementDay.shifts.map(s => ({day:'ص',night:'م',overlap:'ت'} as Record<string,string>)[s] ?? s).join('/')}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div>{offer.claimerName || offer.selectorName || <span className="text-gray-300">—</span>}</div>
+                    {(offer.claimerStation || offer.selectorStation) && (
+                      <div className="text-[10px] text-gray-400 mt-0.5">{offer.claimerStation || offer.selectorStation}</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs" dir="ltr">{offer.claimerEmployeeNumber || offer.selectorCode || '—'}</td>
                   <td className="px-4 py-3">
                     <div className="space-y-1">
                       <span className={clsx('text-xs font-medium px-2 py-1 rounded-full', statusColor(offer.status))}>
@@ -350,7 +413,7 @@ export default function AdminPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {offer.status === 'selected' && (
                         <button
                           onClick={() => handleStatusChange(offer.id!, 'confirmed')}
@@ -360,6 +423,38 @@ export default function AdminPage() {
                             ? <Loader2 className="w-3 h-3 animate-spin" />
                             : <CheckCircle className="w-3 h-3" />}
                           تأكيد
+                        </button>
+                      )}
+                      {offer.status === 'confirmed' && (
+                        <button
+                          onClick={() => handleCancelConfirmation(offer.id!)}
+                          disabled={!!cancelling[offer.id!]}
+                          className="flex items-center gap-1 text-xs bg-orange-100 text-orange-700 hover:bg-orange-200 px-2 py-1 rounded-md transition-colors disabled:opacity-50">
+                          {cancelling[offer.id!]
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : <XCircle className="w-3 h-3" />}
+                          إلغاء التأكيد
+                        </button>
+                      )}
+                      {offer.status === 'rejected' ? (
+                        <button
+                          onClick={() => handleAdminUnreject(offer.id!)}
+                          disabled={!!rejecting[offer.id!]}
+                          className="flex items-center gap-1 text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 px-2 py-1 rounded-md transition-colors disabled:opacity-50">
+                          {rejecting[offer.id!]
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : <CheckCircle className="w-3 h-3" />}
+                          إعادة
+                        </button>
+                      ) : offer.status !== 'confirmed' && (
+                        <button
+                          onClick={() => handleAdminReject(offer.id!)}
+                          disabled={!!rejecting[offer.id!]}
+                          className="flex items-center gap-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded-md transition-colors disabled:opacity-50">
+                          {rejecting[offer.id!]
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : <XCircle className="w-3 h-3" />}
+                          رفض
                         </button>
                       )}
                       {offer.status !== 'confirmed' && (
@@ -381,13 +476,13 @@ export default function AdminPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
         {/* Section header + add form */}
         <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-[#1B3A6B] mb-3">إدارة المحطات</h2>
+          <h2 className="text-lg font-bold text-[#1B3A6B] mb-3">إدارة المراكز</h2>
           <div className="flex gap-3">
             <input
               value={newStation}
               onChange={e => setNewStation(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAddStation()}
-              placeholder="اسم المحطة الجديدة"
+              placeholder="اسم المركز الجديد"
               className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB]"
             />
             <button
@@ -402,13 +497,13 @@ export default function AdminPage() {
 
         {/* Stations table */}
         {stations.length === 0 ? (
-          <p className="text-center text-gray-400 py-8">لا توجد محطات</p>
+          <p className="text-center text-gray-400 py-8">لا توجد مراكز</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-xs uppercase">
-                  <th className="text-right px-5 py-3 font-medium">اسم المحطة</th>
+                  <th className="text-right px-5 py-3 font-medium">اسم المركز</th>
                   <th className="text-right px-5 py-3 font-medium">الحالة</th>
                   <th className="text-right px-5 py-3 font-medium">إجراءات</th>
                 </tr>
@@ -484,7 +579,7 @@ export default function AdminPage() {
                                   ? 'text-gray-400 hover:text-orange-500 hover:bg-orange-50'
                                   : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
                               )}
-                              title={s.active ? 'تعطيل المحطة' : 'تفعيل المحطة'}
+                              title={s.active ? 'تعطيل المركز' : 'تفعيل المركز'}
                             >
                               {s.active ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             </button>
@@ -492,7 +587,7 @@ export default function AdminPage() {
                             <button
                               onClick={() => handleDeleteStation(s.id!, s.name)}
                               className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                              title="حذف المحطة"
+                              title="حذف المركز"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>

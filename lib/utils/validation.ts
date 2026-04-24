@@ -77,6 +77,7 @@ export function statusLabel(status: string): string {
     in_progress: 'متاح',
     selected:    'تم الاختيار',
     confirmed:   'مؤكد',
+    rejected:    'مرفوض',
   }
   return labels[status] || status
 }
@@ -87,6 +88,7 @@ export function statusColor(status: string): string {
     in_progress: 'bg-green-100 text-green-800',
     selected:    'bg-orange-100 text-orange-800',
     confirmed:   'bg-gray-100 text-gray-800',
+    rejected:    'bg-red-100 text-red-800',
   }
   return colors[status] || 'bg-gray-100 text-gray-800'
 }

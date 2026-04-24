@@ -8,7 +8,7 @@ import { db } from './config'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ShiftType = 'day' | 'night' | 'overlap'
-export type OfferStatus = 'in_progress' | 'selected' | 'confirmed'
+export type OfferStatus = 'in_progress' | 'selected' | 'confirmed' | 'rejected'
 
 export interface DayOff {
   date: string   // YYYY-MM-DD
@@ -418,6 +418,33 @@ export async function ownerAcceptOffer(
     updatedAt:        serverTimestamp(),
     ...(confirmedByName  ? { confirmedByName }  : {}),
     ...(confirmedByEmail ? { confirmedByEmail } : {}),
+  })
+}
+
+/** Admin cancels a previously confirmed offer → revert back to 'selected' */
+export async function cancelConfirmation(offerId: string): Promise<void> {
+  await updateDoc(doc(db, 'offers', offerId), {
+    status:          'selected',
+    confirmedByName:  deleteField(),
+    confirmedByEmail: deleteField(),
+    confirmedAt:      deleteField(),
+    updatedAt:        serverTimestamp(),
+  })
+}
+
+/** Admin rejects an offer → status becomes 'rejected' (offer is kept, not deleted) */
+export async function adminRejectOffer(offerId: string): Promise<void> {
+  await updateDoc(doc(db, 'offers', offerId), {
+    status:    'rejected',
+    updatedAt: serverTimestamp(),
+  })
+}
+
+/** Admin un-rejects an offer → status back to 'in_progress' */
+export async function adminUnrejectOffer(offerId: string): Promise<void> {
+  await updateDoc(doc(db, 'offers', offerId), {
+    status:    'in_progress',
+    updatedAt: serverTimestamp(),
   })
 }
 

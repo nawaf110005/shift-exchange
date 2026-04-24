@@ -178,7 +178,7 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
     const codeErr = validateEmployeeCode(code)
     if (codeErr) { toast.error(codeErr); return }
     if (!name.trim()) { toast.error('الاسم مطلوب'); return }
-    if (!station)     { toast.error('المحطة مطلوبة'); return }
+    if (!station)     { toast.error('المركز مطلوب'); return }
 
     const daysErr = validateDaysOff(daysOff)
     if (daysErr) { toast.error(daysErr); return }
@@ -250,10 +250,10 @@ export default function OfferForm({ uid, displayName, offer, onClose }: Props) {
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2E86AB]" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">المحطة</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">المركز</label>
               <select value={station} onChange={e => setStation(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E86AB]">
-                <option value="">اختر المحطة</option>
+                <option value="">اختر المركز</option>
                 {stations.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
               </select>
             </div>

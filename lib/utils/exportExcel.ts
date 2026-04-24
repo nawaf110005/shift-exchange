@@ -13,7 +13,7 @@ function formatReplacementDays(days: Offer['replacementDays']): string {
 function formatTimestamp(ts: any): string {
   if (!ts) return ''
   const date = ts.toDate ? ts.toDate() : new Date(ts)
-  return date.toLocaleDateString('ar-SA', { year: 'numeric', month: '2-digit', day: '2-digit' })
+  return date.toLocaleDateString('ar-EG-u-ca-gregory', { year: 'numeric', month: '2-digit', day: '2-digit' })
 }
 
 export function exportOffersToExcel(offers: Offer[], filename = 'تقرير_تبديل_الدوام') {

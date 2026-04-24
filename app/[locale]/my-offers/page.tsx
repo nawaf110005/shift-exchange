@@ -138,7 +138,7 @@ export default function MyOffersPage() {
   }
 
   return (
-    <div>
+    <div className="pb-28">
       {/* Guest banner */}
       {user?.isAnonymous && (
         <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
@@ -232,11 +232,57 @@ export default function MyOffersPage() {
                 </div>
               </div>
 
+              {/* Exchange details — shown for selected & confirmed */}
+              {(offer.status === 'selected' || offer.status === 'confirmed') && (
+                (() => {
+                  const otherName    = offer.claimerName    || offer.selectorName
+                  const otherStation = offer.claimerStation || offer.selectorStation
+                  const repDay       = offer.selectedReplacementDay
+                  const shiftLabel   = ({ day: 'صباحي', night: 'مسائي', overlap: 'تداخل' } as Record<string, string>)
+                  if (!otherName && !otherStation && !repDay) return null
+                  return (
+                    <div className={clsx(
+                      'mt-3 p-3 rounded-xl border grid grid-cols-3 gap-2 text-center',
+                      offer.status === 'confirmed'
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-orange-50 border-orange-200'
+                    )}>
+                      {/* مع مين */}
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-gray-400 font-medium">مع مين</span>
+                        <span className="text-xs font-semibold text-gray-800 truncate">{otherName || '—'}</span>
+                      </div>
+                      {/* اين */}
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-gray-400 font-medium">اين</span>
+                        <span className="text-xs font-semibold text-gray-800 truncate">{otherStation || '—'}</span>
+                      </div>
+                      {/* متى */}
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-gray-400 font-medium">متى</span>
+                        {repDay ? (
+                          <span className="text-xs font-semibold text-gray-800">
+                            {repDay.date}
+                            {repDay.shifts?.length > 0 && (
+                              <span className="block text-[10px] font-normal text-gray-500">
+                                {repDay.shifts.map(s => shiftLabel[s] ?? s).join(' · ')}
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-xs font-semibold text-gray-800">—</span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()
+              )}
+
               {/* Selector pending — accept / reject */}
               {offer.status === 'selected' && offer.selectorName && (
                 <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-xl space-y-2">
                   <p className="text-xs text-orange-700 font-semibold">
-                    ✋ طلب اختيار من: {offer.selectorName}
+                    ✋ طلب اختيار من: {offer.claimerName || offer.selectorName}
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -262,10 +308,10 @@ export default function MyOffersPage() {
               {/* Confirmed badge */}
               {offer.status === 'confirmed' && (
                 <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <p className="text-xs text-green-700 font-semibold">✅ تم تأكيد التبديل مع {offer.selectorName}</p>
-                  {(offer as any).confirmedByName && (
+                  <p className="text-xs text-green-700 font-semibold">✅ تم تأكيد التبديل مع {offer.claimerName || offer.selectorName}</p>
+                  {offer.confirmedByName && (
                     <p className="text-xs text-green-600 mt-1">
-                      اعتمد بواسطة: {(offer as any).confirmedByName} · {(offer as any).confirmedByEmail}
+                      اعتمد بواسطة: {offer.confirmedByName} · {offer.confirmedByEmail}
                     </p>
                   )}
                 </div>

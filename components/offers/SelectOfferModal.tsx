@@ -57,7 +57,7 @@ function mergeNightShifts(days: ReplacementDay[]): ReplacementDay[] {
 /** Format YYYY-MM-DD → Arabic day + month (e.g. "٢٣ أبريل") */
 function formatArabicDate(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('ar-SA', { day: 'numeric', month: 'long' })
+  return new Date(y, m - 1, d).toLocaleDateString('ar-EG-u-ca-gregory', { day: 'numeric', month: 'long' })
 }
 
 /** A single selectable (date + shift type) combination */
@@ -90,16 +90,19 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
     shiftOptions.length === 1 ? shiftOptions[0] : null
   )
   const [stations,               setStations]               = useState<Station[]>([])
-  const [claimerName,            setClaimerName]            = useState(getCurrentUser()?.displayName || '')
+  // Always start empty — only pre-fill from auth if displayName is a non-empty string.
+  // This forces every user (including signed-in Google users without a displayName) to
+  // explicitly type their name before the Confirm button becomes enabled.
+  const [claimerName,            setClaimerName]            = useState('')
   const [claimerStation,         setClaimerStation]         = useState('')
   const [claimerEmployeeNumber,  setClaimerEmployeeNumber]  = useState('')
 
-  // Keep user in sync; pre-fill name if it arrives after mount (e.g. slow auth init)
+  // Keep user in sync; pre-fill name only when auth provides a real display name.
   useEffect(() => {
     return onAuth((u) => {
       setUser(u)
-      if (u?.displayName) {
-        setClaimerName(prev => prev || u.displayName!)
+      if (u?.displayName?.trim()) {
+        setClaimerName(prev => prev || u.displayName!.trim())
       }
     })
   }, [])
@@ -258,20 +261,20 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
               {/* Station / Location — required */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                  المحطة / الموقع <span className="text-red-500">*</span>
+                  المركز / الموقع <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={claimerStation}
                   onChange={(e) => setClaimerStation(e.target.value)}
                   className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2E86AB]"
                 >
-                  <option value="">اختر المحطة</option>
+                  <option value="">اختر المركز</option>
                   {stations.map((s) => (
                     <option key={s.id} value={s.name}>{s.name}</option>
                   ))}
                 </select>
                 {!claimerStation && (
-                  <p className="text-xs text-red-500 mt-1">المحطة مطلوبة</p>
+                  <p className="text-xs text-red-500 mt-1">المركز مطلوب</p>
                 )}
               </div>
 

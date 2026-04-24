@@ -87,11 +87,11 @@ export default function SelectedOffersPage() {
   }
 
   return (
-    <div>
+    <div className="pb-28">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-[#1B3A6B]">عروضي المختارة</h1>
         <p className="text-gray-500 text-sm mt-1">
-          العروض التي اخترتها للتبديل · {offers.length} / 20
+          العروض التي اخترتها للتبديل · {offers.length}
         </p>
       </div>
 
@@ -135,6 +135,21 @@ export default function SelectedOffersPage() {
                   <p className="text-xs text-gray-400">
                     {offer.replacementDays.length} يوم بديل متاح
                   </p>
+
+                  {/* Agreed replacement day */}
+                  {offer.selectedReplacementDay && (
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">الوردية المتفق عليها</p>
+                      <p className="text-sm font-semibold text-[#1B3A6B]">
+                        {offer.selectedReplacementDay.date}
+                        {offer.selectedReplacementDay.shifts?.length > 0 && (
+                          <span className="mr-2 text-xs font-normal text-gray-500">
+                            {offer.selectedReplacementDay.shifts.map(s => shiftLabel[s] ?? s).join(' · ')}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  )}
 
                   {offer.status === 'confirmed' && (
                     <div className="mt-3 p-3 bg-green-50 border border-green-100 rounded-lg">
