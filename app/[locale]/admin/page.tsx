@@ -418,7 +418,10 @@ export default function AdminPage() {
 
                   {/* 5. البديل */}
                   <td className="px-3 py-2.5 text-sm whitespace-nowrap">
-                    {offer.claimerName || offer.selectorName || <span className="text-gray-300">—</span>}
+                    <div>{offer.claimerName || offer.selectorName || <span className="text-gray-300">—</span>}</div>
+                    {offer.claimerStation && (
+                      <div className="text-xs text-gray-400 mt-0.5">{offer.claimerStation}</div>
+                    )}
                   </td>
 
                   {/* 6. رقم الموظف (البديل) */}
@@ -514,6 +517,14 @@ export default function AdminPage() {
                         </button>
                       )}
                     </div>
+                    {(offer.confirmedByName || offer.confirmedByEmail) && (
+                      <div className="mt-1.5 text-[11px] text-gray-400 leading-tight">
+                        <span className="font-medium text-gray-500">{offer.confirmedByName}</span>
+                        {offer.confirmedByEmail && (
+                          <span className="block" dir="ltr">{offer.confirmedByEmail}</span>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
