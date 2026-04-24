@@ -186,147 +186,155 @@ export default function MyOffersPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {offers.map(offer => (
-            <div key={offer.id} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 shadow-sm">
-              {/* Status + meta row */}
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="flex flex-wrap items-center gap-2 min-w-0">
-                  <span className={clsx('text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap', statusColor(offer.status))}>
-                    {statusLabel(offer.status)}
-                  </span>
-                  <span className="text-sm text-gray-500 truncate">{offer.ownerStation}</span>
-                  <span className="text-xs text-gray-400">{offer.offerMonth}</span>
-                </div>
+          {offers.map(offer => {
+            const shiftLabel: Record<string, string> = { day: 'صباحي', night: 'مسائي', overlap: 'أوفرلاب' }
+            const otherName    = offer.claimerName    || offer.selectorName
+            const otherStation = offer.claimerStation || offer.selectorStation
+            const repDay       = offer.selectedReplacementDay
+            const hasClaimer   = !!(otherName || otherStation || repDay)
+            const isClaimed    = (offer.status === 'selected' || offer.status === 'confirmed') && hasClaimer
 
-                {/* Action buttons — only for in_progress (non-expired) */}
-                {offer.status === 'in_progress' && (
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => { setEditing(offer); setShowForm(true) }}
-                      className="p-2.5 text-gray-400 active:text-[#2E86AB] active:bg-blue-50 rounded-xl transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(offer)}
-                      disabled={deleting === offer.id}
-                      className="p-2.5 text-gray-400 active:text-red-500 active:bg-red-50 rounded-xl transition-colors disabled:opacity-50 min-w-[40px] min-h-[40px] flex items-center justify-center"
-                    >
-                      {deleting === offer.id
-                        ? <Loader2 className="w-4 h-4 animate-spin" />
-                        : <Trash2 className="w-4 h-4" />}
-                    </button>
+            return (
+              <div key={offer.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+                {/* ✓ Admin-confirmed banner */}
+                {offer.status === 'confirmed' && (
+                  <div className="bg-green-500 text-white text-center text-xs font-bold py-2 flex items-center justify-center gap-1.5 tracking-wide">
+                    <span>✓</span><span>مؤكد من الإدارة</span>
                   </div>
                 )}
-              </div>
 
-              {/* Days off chips */}
-              <div className="mb-2">
-                <p className="text-xs text-gray-400 mb-1.5">أيام الطلب</p>
-                <div className="flex flex-wrap gap-1">
-                  {offer.daysOff.map((d, i) => (
-                    <span key={i} className="text-xs bg-red-50 text-red-700 border border-red-100 px-2 py-1 rounded-full">
-                      {d.date} · {({ day:'صباحي', night:'مسائي', overlap:'أوفرلاب' } as Record<string,string>)[d.shift]}
+                <div className="p-4">
+                  {/* Top row: status badge + action buttons */}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className={clsx('text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap', statusColor(offer.status))}>
+                      {statusLabel(offer.status)}
                     </span>
-                  ))}
+                    {offer.status === 'in_progress' && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => { setEditing(offer); setShowForm(true) }}
+                          className="p-2.5 text-gray-400 active:text-[#2E86AB] active:bg-blue-50 rounded-xl transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(offer)}
+                          disabled={deleting === offer.id}
+                          className="p-2.5 text-gray-400 active:text-red-500 active:bg-red-50 rounded-xl transition-colors disabled:opacity-50 min-w-[40px] min-h-[40px] flex items-center justify-center"
+                        >
+                          {deleting === offer.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ─── Section 1: عرضي ─────────────────────────────── */}
+                  <p className="text-xs font-bold text-[#1B3A6B] mb-3">عرضي</p>
+
+                  {/* أيام الطلب */}
+                  <div className="mb-3">
+                    <p className="text-[11px] text-gray-400 mb-1.5">أيام الطلب</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {offer.daysOff.map((d, i) => (
+                        <span key={i} className="text-xs bg-red-50 text-red-700 border border-red-100 px-2.5 py-1 rounded-full">
+                          {d.date} · {shiftLabel[d.shift] ?? d.shift}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* مركزي */}
+                  <div className="mb-3">
+                    <p className="text-[11px] text-gray-400 mb-1">مركزي</p>
+                    <p className="text-sm font-semibold text-gray-800">{offer.ownerStation}</p>
+                  </div>
+
+                  {/* أيام البديل */}
+                  <div>
+                    <p className="text-[11px] text-gray-400 mb-1.5">أيام البديل</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {offer.replacementDays.map((r, i) => (
+                        <span key={i} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-1 rounded-full">
+                          {r.date}{r.shifts?.length > 0 ? ` · ${r.shifts.map(s => shiftLabel[s] ?? s).join('/')}` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ─── Section 2: المختار ───────────────────────────── */}
+                  {isClaimed && (
+                    <>
+                      <div className="my-4 border-t border-gray-100" />
+                      <p className="text-xs font-bold text-[#2E86AB] mb-3">المختار</p>
+
+                      <div className="space-y-2.5">
+                        {/* الاسم */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-gray-400">الاسم</span>
+                          <span className="text-xs font-semibold text-gray-800">{otherName || '—'}</span>
+                        </div>
+                        {/* المركز */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-gray-400">المركز</span>
+                          <span className="text-xs font-semibold text-gray-800">{otherStation || '—'}</span>
+                        </div>
+                        {/* المناوبة المتفق عليها */}
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-[11px] text-gray-400 shrink-0">المناوبة المتفق عليها</span>
+                          {repDay ? (
+                            <span className="text-xs font-semibold text-gray-800 text-left">
+                              {repDay.date}
+                              {repDay.shifts?.length > 0 && (
+                                <span className="text-[10px] font-normal text-gray-500 mr-1">
+                                  {repDay.shifts.map(s => shiftLabel[s] ?? s).join(' · ')}
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Accept / Reject for pending selection */}
+                      {offer.status === 'selected' && offer.selectorName && (
+                        <div className="mt-4 pt-3 border-t border-orange-100">
+                          <p className="text-xs text-orange-700 font-semibold mb-2">
+                            ✋ طلب اختيار — هل تقبل؟
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleAccept(offer)}
+                              disabled={accepting === offer.id || rejecting === offer.id}
+                              className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 text-white text-xs font-semibold py-2.5 rounded-xl disabled:opacity-50"
+                            >
+                              {accepting === offer.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                              قبول
+                            </button>
+                            <button
+                              onClick={() => handleReject(offer)}
+                              disabled={accepting === offer.id || rejecting === offer.id}
+                              className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 text-red-600 border border-red-200 text-xs font-semibold py-2.5 rounded-xl disabled:opacity-50"
+                            >
+                              {rejecting === offer.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                              رفض
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  <p className="text-[11px] text-gray-300 mt-4">
+                    {offer.createdAt ? ((d: Date) => `${d.getDate()} ${['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'][d.getMonth()]} ${d.getFullYear()}`)((offer.createdAt as any).toDate()) : ''}
+                  </p>
                 </div>
               </div>
-
-              {/* Exchange details — shown for selected & confirmed */}
-              {(offer.status === 'selected' || offer.status === 'confirmed') && (
-                (() => {
-                  const otherName    = offer.claimerName    || offer.selectorName
-                  const otherStation = offer.claimerStation || offer.selectorStation
-                  const repDay       = offer.selectedReplacementDay
-                  const shiftLabel   = ({ day: 'صباحي', night: 'مسائي', overlap: 'أوفرلاب' } as Record<string, string>)
-                  if (!otherName && !otherStation && !repDay) return null
-                  return (
-                    <div className={clsx(
-                      'mt-3 p-3 rounded-xl border grid grid-cols-3 gap-2 text-center',
-                      offer.status === 'confirmed'
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-orange-50 border-orange-200'
-                    )}>
-                      {/* مع مين */}
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] text-gray-400 font-medium">مع مين</span>
-                        <span className="text-xs font-semibold text-gray-800 truncate">{otherName || '—'}</span>
-                      </div>
-                      {/* اين */}
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] text-gray-400 font-medium">اين</span>
-                        <span className="text-xs font-semibold text-gray-800 truncate">{otherStation || '—'}</span>
-                      </div>
-                      {/* متى */}
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] text-gray-400 font-medium">متى</span>
-                        {repDay ? (
-                          <span className="text-xs font-semibold text-gray-800">
-                            {repDay.date}
-                            {repDay.shifts?.length > 0 && (
-                              <span className="block text-[10px] font-normal text-gray-500">
-                                {repDay.shifts.map(s => shiftLabel[s] ?? s).join(' · ')}
-                              </span>
-                            )}
-                            {offer.ownerStation && (
-                              <span className="block text-[10px] font-normal text-[#2E86AB]">
-                                {offer.ownerStation}
-                              </span>
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-xs font-semibold text-gray-800">—</span>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })()
-              )}
-
-              {/* Selector pending — accept / reject */}
-              {offer.status === 'selected' && offer.selectorName && (
-                <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-xl space-y-2">
-                  <p className="text-xs text-orange-700 font-semibold">
-                    ✋ طلب اختيار من: {offer.claimerName || offer.selectorName}
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleAccept(offer)}
-                      disabled={accepting === offer.id || rejecting === offer.id}
-                      className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 text-white text-xs font-semibold py-2 rounded-lg disabled:opacity-50"
-                    >
-                      {accepting === offer.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                      قبول
-                    </button>
-                    <button
-                      onClick={() => handleReject(offer)}
-                      disabled={accepting === offer.id || rejecting === offer.id}
-                      className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 text-red-600 border border-red-200 text-xs font-semibold py-2 rounded-lg disabled:opacity-50"
-                    >
-                      {rejecting === offer.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
-                      رفض
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Confirmed badge */}
-              {offer.status === 'confirmed' && (
-                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <p className="text-xs text-green-700 font-semibold">✅ تم تأكيد التبديل مع {offer.claimerName || offer.selectorName}</p>
-                  {offer.confirmedByName && (
-                    <p className="text-xs text-green-600 mt-1">
-                      اعتمد بواسطة: {offer.confirmedByName} · {offer.confirmedByEmail}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <p className="text-xs text-gray-400 mt-2">
-                {offer.createdAt ? ((d: Date) => `${d.getDate()} ${['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'][d.getMonth()]} ${d.getFullYear()}`)((offer.createdAt as any).toDate()) : ''}
-              </p>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

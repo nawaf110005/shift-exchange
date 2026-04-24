@@ -108,79 +108,114 @@ export default function SelectedOffersPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {offers.map(offer => (
-            <div key={offer.id} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className={clsx('text-xs font-medium px-2.5 py-1 rounded-full', statusColor(offer.status))}>
+        <div className="space-y-3">
+          {offers.map(offer => {
+            const repDay = offer.selectedReplacementDay
+
+            return (
+              <div key={offer.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+                {/* ✓ Admin-confirmed banner */}
+                {offer.status === 'confirmed' && (
+                  <div className="bg-green-500 text-white text-center text-xs font-bold py-2 flex items-center justify-center gap-1.5 tracking-wide">
+                    <span>✓</span><span>مؤكد من الإدارة</span>
+                  </div>
+                )}
+
+                <div className="p-4">
+                  {/* Top row: status badge + cancel button */}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className={clsx('text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap', statusColor(offer.status))}>
                       {statusLabel(offer.status)}
                     </span>
-                    <span className="text-sm text-gray-600 font-medium">{offer.ownerName}</span>
-                    <span className="text-sm text-gray-400">· {offer.ownerStation}</span>
+                    {offer.status === 'selected' && (
+                      <button
+                        onClick={() => handleCancel(offer.id!)}
+                        disabled={canceling === offer.id}
+                        className="flex items-center gap-1.5 text-xs bg-red-50 text-red-600 border border-red-100 active:bg-red-100 px-3 py-2 rounded-xl transition-colors disabled:opacity-50 min-h-[36px]"
+                      >
+                        {canceling === offer.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <XCircle className="w-3.5 h-3.5" />
+                        }
+                        إلغاء الاختيار
+                      </button>
+                    )}
                   </div>
 
+                  {/* ─── Section 1: عرضي ─────────────────────────────── */}
+                  <p className="text-xs font-bold text-[#1B3A6B] mb-3">عرضي</p>
+
+                  {/* أيام الطلب */}
                   <div className="mb-3">
-                    <p className="text-xs text-gray-400 mb-1">أيام الطلب</p>
-                    <div className="flex flex-wrap gap-1">
+                    <p className="text-[11px] text-gray-400 mb-1.5">أيام الطلب</p>
+                    <div className="flex flex-wrap gap-1.5">
                       {offer.daysOff.map((d, i) => (
-                        <span key={i} className="text-xs bg-red-50 text-red-700 border border-red-100 px-2 py-0.5 rounded-full">
-                          {d.date} · {shiftLabel[d.shift]}
+                        <span key={i} className="text-xs bg-red-50 text-red-700 border border-red-100 px-2.5 py-1 rounded-full">
+                          {d.date} · {shiftLabel[d.shift] ?? d.shift}
                         </span>
                       ))}
                     </div>
                   </div>
 
-                  <p className="text-xs text-gray-400">
-                    {offer.replacementDays.length} يوم بديل متاح
-                  </p>
+                  {/* مركزي */}
+                  <div className="mb-3">
+                    <p className="text-[11px] text-gray-400 mb-1">مركزي</p>
+                    <p className="text-sm font-semibold text-gray-800">{offer.ownerStation}</p>
+                  </div>
 
-                  {/* Agreed replacement day */}
-                  {offer.selectedReplacementDay && (
-                    <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">المناوبة المتفق عليها</p>
-                      <p className="text-sm font-semibold text-[#1B3A6B]">
-                        {offer.selectedReplacementDay.date}
-                        {offer.selectedReplacementDay.shifts?.length > 0 && (
-                          <span className="mr-2 text-xs font-normal text-gray-500">
-                            {offer.selectedReplacementDay.shifts.map(s => shiftLabel[s] ?? s).join(' · ')}
-                          </span>
-                        )}
-                      </p>
-                      {offer.ownerStation && (
-                        <p className="text-xs text-[#2E86AB] font-medium mt-0.5">{offer.ownerStation}</p>
+                  {/* أيام البديل */}
+                  <div>
+                    <p className="text-[11px] text-gray-400 mb-1.5">أيام البديل</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {offer.replacementDays.map((r, i) => (
+                        <span key={i} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-1 rounded-full">
+                          {r.date}{r.shifts?.length > 0 ? ` · ${r.shifts.map(s => shiftLabel[s] ?? s).join('/')}` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ─── Section 2: المختار ───────────────────────────── */}
+                  <div className="my-4 border-t border-gray-100" />
+                  <p className="text-xs font-bold text-[#2E86AB] mb-3">المختار</p>
+
+                  <div className="space-y-2.5">
+                    {/* الاسم */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-gray-400">الاسم</span>
+                      <span className="text-xs font-semibold text-gray-800">{offer.ownerName || '—'}</span>
+                    </div>
+                    {/* المركز */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-gray-400">المركز</span>
+                      <span className="text-xs font-semibold text-gray-800">{offer.ownerStation || '—'}</span>
+                    </div>
+                    {/* المناوبة المتفق عليها */}
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[11px] text-gray-400 shrink-0">المناوبة المتفق عليها</span>
+                      {repDay ? (
+                        <span className="text-xs font-semibold text-gray-800 text-left">
+                          {repDay.date}
+                          {repDay.shifts?.length > 0 && (
+                            <span className="text-[10px] font-normal text-gray-500 mr-1">
+                              {repDay.shifts.map(s => shiftLabel[s] ?? s).join(' · ')}
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
                       )}
                     </div>
-                  )}
+                  </div>
 
-                  {offer.status === 'confirmed' && (
-                    <div className="mt-3 p-3 bg-green-50 border border-green-100 rounded-lg">
-                      <p className="text-xs text-green-700 font-medium">✅ تم تأكيد هذا التبديل من قِبل الإدارة</p>
-                    </div>
-                  )}
-
-                  <p className="text-xs text-gray-400 mt-2">
+                  <p className="text-[11px] text-gray-300 mt-4">
                     {offer.createdAt ? ((d: Date) => `${d.getDate()} ${['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'][d.getMonth()]} ${d.getFullYear()}`)((offer.createdAt as any).toDate()) : ''}
                   </p>
                 </div>
-
-                {offer.status === 'selected' && (
-                  <button
-                    onClick={() => handleCancel(offer.id!)}
-                    disabled={canceling === offer.id}
-                    className="flex items-center gap-1.5 text-xs bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 mr-4"
-                  >
-                    {canceling === offer.id
-                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      : <XCircle className="w-3.5 h-3.5" />
-                    }
-                    إلغاء الاختيار
-                  </button>
-                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
