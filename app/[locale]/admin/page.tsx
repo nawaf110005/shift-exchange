@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { httpsCallable } from 'firebase/functions'
-import { functions } from '@/lib/firebase/config'
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { db } from '@/lib/firebase/config'
 import { signInWithGoogle, logOut, isAdmin as checkAdmin, onAuth } from '@/lib/firebase/auth'
 import {
   getAllOffersAdmin, updateOffer, deleteOffer, ownerAcceptOffer,
@@ -180,8 +180,10 @@ export default function AdminPage() {
   async function handleGrantAdmin(email: string, uid: string) {
     setAdminLoading(prev => ({ ...prev, [uid]: true }))
     try {
-      const fn = httpsCallable(functions, 'grantAdminRole')
-      await fn({ email })
+      await updateDoc(doc(db, 'userProfiles', uid), {
+        isAdmin: true,
+        adminGrantedAt: serverTimestamp(),
+      })
       toast.success(`تم منح صلاحية الإدارة لـ ${email}`)
       await loadUserProfiles()
     } catch (err: any) {
@@ -193,10 +195,13 @@ export default function AdminPage() {
 
   async function handleRevokeAdmin(email: string, uid: string) {
     if (!confirm(`هل أنت متأكد من إلغاء صلاحية الإدارة من ${email}؟`)) return
+    if (uid === user?.uid) {
+      toast.error('لا يمكنك إلغاء صلاحيتك الخاصة')
+      return
+    }
     setAdminLoading(prev => ({ ...prev, [uid]: true }))
     try {
-      const fn = httpsCallable(functions, 'revokeAdminRole')
-      await fn({ email })
+      await updateDoc(doc(db, 'userProfiles', uid), { isAdmin: false })
       toast.success(`تم إلغاء صلاحية الإدارة من ${email}`)
       await loadUserProfiles()
     } catch (err: any) {

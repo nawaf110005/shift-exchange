@@ -92,7 +92,13 @@ service cloud.firestore {
     match /userProfiles/{uid} {
       // Users read/write their own profile; admin reads all
       allow read: if isOwner(uid) || isAdmin();
-      allow write: if isOwner(uid);   // Cloud Functions handle admin writes via Admin SDK
+      allow write: if isOwner(uid);
+      // Admins can update isAdmin (and adminGrantedAt) on other users' profiles,
+      // but cannot modify their own admin status (prevents accidental self-lockout)
+      allow update: if isAdmin()
+        && request.auth.uid != uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['isAdmin', 'adminGrantedAt']);
     }
 
     // ─── /stations ───────────────────────────────────────────────
