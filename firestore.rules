@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper functions ─────────────────────────────────────────
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Admin flag lives in Firestore userProfiles/{uid}.isAdmin
+    function isAdmin() {
+      return isAuth() &&
+        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+    function validCode(code) {
+      return code.matches('^[0-9]{6}$');
+    }
+    function validStatus(s) {
+      return s in ['in_progress', 'selected', 'confirmed'];
+    }
+
+    // ─── /offers ──────────────────────────────────────────────────
+    match /offers/{offerId} {
+      // READ: in_progress offers are PUBLIC (no sign-in needed to browse)
+      //       owner, selector, and admin can read any status
+      allow read: if resource.data.status == 'in_progress'
+        || isOwner(resource.data.ownerUid)
+        || isOwner(resource.data.selectorUid)
+        || isAdmin();
+
+      // CREATE: authenticated user with valid data
+      allow create: if isAuth()
+        && validCode(request.resource.data.ownerCode)
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == 'in_progress'
+        && validStatus(request.resource.data.status)
+        && request.resource.data.daysOff.size() > 0
+        && request.resource.data.replacementDays.size() <= 16;
+
+      // UPDATE rules — four allowed cases:
+      allow update: if
+        // 1. Owner edits content (only while in_progress)
+        (isOwner(resource.data.ownerUid)
+          && resource.data.status == 'in_progress'
+          && request.resource.data.status == 'in_progress'
+          && request.resource.data.ownerUid == resource.data.ownerUid)
+        // 2. Selector picks an in_progress offer
+        || (isAuth()
+          && resource.data.status == 'in_progress'
+          && request.auth.uid != resource.data.ownerUid
+          && request.resource.data.status == 'selected'
+          && request.resource.data.selectorUid == request.auth.uid
+          && validCode(request.resource.data.selectorCode)
+          && request.resource.data.ownerUid == resource.data.ownerUid)
+        // 3. Selector cancels their own selection
+        || (isAuth()
+          && resource.data.status == 'selected'
+          && request.auth.uid == resource.data.selectorUid
+          && request.resource.data.status == 'in_progress'
+          && !('selectorUid' in request.resource.data)
+          && request.resource.data.ownerUid == resource.data.ownerUid)
+        // 4. Owner accepts selection → confirmed
+        || (isOwner(resource.data.ownerUid)
+          && resource.data.status == 'selected'
+          && request.resource.data.status == 'confirmed'
+          && request.resource.data.ownerUid == resource.data.ownerUid)
+        // 5. Owner rejects selection → back to in_progress
+        || (isOwner(resource.data.ownerUid)
+          && resource.data.status == 'selected'
+          && request.resource.data.status == 'in_progress'
+          && !('selectorUid' in request.resource.data)
+          && request.resource.data.ownerUid == resource.data.ownerUid)
+        // 6. Admin can do anything
+        || isAdmin();
+
+      // DELETE: owner (only in_progress) or admin
+      allow delete: if (
+          isOwner(resource.data.ownerUid)
+          && resource.data.status == 'in_progress'
+        )
+        || isAdmin();
+    }
+
+    // ─── /userProfiles ────────────────────────────────────────────
+    match /userProfiles/{uid} {
+      // Users read/write their own profile; admin reads all
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid);   // Cloud Functions handle admin writes
+    }
+
+    // ─── /stations ───────────────────────────────────────────────
+    match /stations/{stationId} {
+      allow read: if true;           // Public — station names are not sensitive
+      allow write: if isAdmin();
+    }
+
+    // ─── /adminLogs ──────────────────────────────────────────────
+    match /adminLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
