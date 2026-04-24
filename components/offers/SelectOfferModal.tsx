@@ -114,6 +114,17 @@ export default function SelectOfferModal({ offer, onClose }: Props) {
 
   async function handleConfirm() {
     if (!selectedDay || !claimerStation || !claimerName.trim()) return
+
+    // Block claim if claimer is from the same center AND their selected replacement
+    // day matches any of the owner's requested days off (same date + same shift)
+    if (
+      claimerStation === offer.ownerStation &&
+      offer.daysOff.some(d => d.date === selectedDay.date && d.shift === selectedDay.shift)
+    ) {
+      toast.error('لا يمكن قبول العرض، لديك نفس المناوبة والمركز')
+      return
+    }
+
     setLoading(true)
     // Wrap the chosen (date + shift) pair into the ReplacementDay shape expected by Firestore
     const chosenReplacementDay: ReplacementDay = { date: selectedDay.date, shifts: [selectedDay.shift] }

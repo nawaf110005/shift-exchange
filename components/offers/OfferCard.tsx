@@ -59,20 +59,20 @@ export default function OfferCard({ offer, myUid, onSelect, compact = false }: P
           <div className="mb-4">
             <p className="text-xs text-gray-400 mb-1.5 flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              الأيام البديلة
+              يوم البديل
             </p>
-            <div className="flex flex-wrap gap-1">
-              {offer.replacementDays.slice(0, 3).map((d, i) => (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {offer.replacementDays.map((d, i) => (
                 <span key={i} className="text-xs bg-green-50 text-green-700 border border-green-100 px-2 py-1 rounded-full">
                   {d.date} · {d.shifts.map(shiftLabel).join('، ')}
                 </span>
               ))}
-              {offer.replacementDays.length > 3 && (
-                <span className="text-xs text-gray-400 self-center">
-                  +{offer.replacementDays.length - 3} أيام
-                </span>
-              )}
             </div>
+            <p className="text-xs text-gray-400 flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              <span>مركز البديل:</span>
+              <span className="font-medium text-gray-600">{offer.ownerStation}</span>
+            </p>
           </div>
         </>
       )}
