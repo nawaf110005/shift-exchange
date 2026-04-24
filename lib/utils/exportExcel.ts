@@ -29,6 +29,8 @@ export function exportOffersToExcel(offers: Offer[], filename = 'تقرير_تب
     'الحالة':               statusLabel(o.status),
     'تاريخ الإنشاء':        formatTimestamp(o.createdAt),
     'تاريخ التأكيد':        formatTimestamp(o.confirmedAt),
+    'اسم المعتمِد':          o.confirmedByName  || '',
+    'بريد المعتمِد':         o.confirmedByEmail || '',
   }))
 
   const ws = XLSX.utils.json_to_sheet(rows)
@@ -37,7 +39,7 @@ export function exportOffersToExcel(offers: Offer[], filename = 'تقرير_تب
   ws['!cols'] = [
     { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 30 },
     { wch: 35 }, { wch: 20 }, { wch: 15 }, { wch: 15 },
-    { wch: 15 }, { wch: 18 }, { wch: 18 },
+    { wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 28 },
   ]
 
   const wb = XLSX.utils.book_new()
